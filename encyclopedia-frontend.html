@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ENCYCLOPAEDIA NEXUS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,300;400;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════
+   VARIABLES & RESET
+═══════════════════════════════════════════════════════ */
+:root {
+  --ink:       #0d0d0f;
+  --paper:     #f5f0e8;
+  --cream:     #ede8de;
+  --gold:      #b8860b;
+  --gold-lt:   #d4a520;
+  --rust:      #8b3a2a;
+  --sage:      #4a6741;
+  --teal:      #2d6b6b;
+  --muted:     #6b6560;
+  --border:    #c8c0b0;
+  --card-bg:   #faf7f2;
+  --serif:     'Source Serif 4', Georgia, serif;
+  --display:   'Playfair Display', Georgia, serif;
+  --mono:      'IBM Plex Mono', monospace;
+  --r:         6px;
+  --shadow:    0 2px 12px rgba(13,13,15,.08);
+  --shadow-lg: 0 8px 40px rgba(13,13,15,.14);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--serif);
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.7;
+  min-height: 100vh;
+}
+
+/* ═══════════════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════════════ */
+#app { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ─── HEADER ─── */
+header {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 3px solid var(--gold);
+}
+
+.header-inner {
+  max-width: 1300px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  height: 62px;
+}
+
+.logo {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: 1.35rem;
+  letter-spacing: .04em;
+  color: var(--gold-lt);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+.logo span { color: var(--paper); font-weight: 400; font-size: .8em; letter-spacing: .12em; display: block; }
+
+.search-wrap {
+  flex: 1;
+  max-width: 520px;
+  position: relative;
+}
+.search-wrap input {
+  width: 100%;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: var(--r);
+  padding: .52rem 2.6rem .52rem 1rem;
+  color: var(--paper);
+  font-family: var(--serif);
+  font-size: .95rem;
+  outline: none;
+  transition: border-color .2s, background .2s;
+}
+.search-wrap input::placeholder { color: rgba(245,240,232,.45); }
+.search-wrap input:focus { border-color: var(--gold-lt); background: rgba(255,255,255,.13); }
+.search-icon {
+  position: absolute; right: .8rem; top: 50%; transform: translateY(-50%);
+  color: rgba(245,240,232,.5); pointer-events: none; font-size: .95rem;
+}
+
+.header-actions { display: flex; gap: .6rem; margin-left: auto; }
+.btn {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .48rem 1.1rem;
+  border-radius: var(--r);
+  border: none; cursor: pointer;
+  font-family: var(--serif); font-size: .88rem; font-weight: 600;
+  transition: all .18s;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--gold); color: var(--ink); }
+.btn-primary:hover { background: var(--gold-lt); }
+.btn-ghost { background: transparent; color: var(--paper); border: 1px solid rgba(255,255,255,.25); }
+.btn-ghost:hover { background: rgba(255,255,255,.1); }
+.btn-sm { padding: .35rem .8rem; font-size: .82rem; }
+.btn-danger { background: #c0392b; color: #fff; }
+.btn-danger:hover { background: #a93226; }
+
+/* ─── MAIN ─── */
+main { flex: 1; max-width: 1300px; margin: 0 auto; padding: 2rem; width: 100%; }
+
+/* ─── SIDEBAR + CONTENT ─── */
+.layout { display: grid; grid-template-columns: 230px 1fr; gap: 2rem; align-items: start; }
+
+@media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+/* ─── SIDEBAR ─── */
+aside {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 1.2rem;
+  position: sticky;
+  top: 82px;
+}
+aside h3 {
+  font-family: var(--mono);
+  font-size: .72rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: .8rem;
+}
+.tag-cloud { display: flex; flex-wrap: wrap; gap: .4rem; }
+.tag-pill {
+  padding: .28rem .7rem;
+  border-radius: 20px;
+  font-size: .78rem;
+  font-family: var(--mono);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: opacity .15s, transform .15s;
+  font-weight: 600;
+}
+.tag-pill:hover { opacity: .85; transform: translateY(-1px); }
+.tag-pill.active { box-shadow: 0 0 0 2px var(--ink); }
+
+.sidebar-stats { margin-top: 1.4rem; }
+.stat-row { display: flex; justify-content: space-between; font-size: .83rem; padding: .3rem 0; border-bottom: 1px solid var(--cream); color: var(--muted); }
+.stat-row strong { color: var(--ink); font-family: var(--mono); }
+
+/* ─── CONTENT AREA ─── */
+.content-area {}
+
+/* ─── TOOLBAR ─── */
+.toolbar { display: flex; align-items: center; gap: .8rem; margin-bottom: 1.4rem; flex-wrap: wrap; }
+.toolbar-title { font-family: var(--display); font-size: 1.5rem; font-weight: 700; flex: 1; }
+.sort-select {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: var(--r); padding: .4rem .8rem;
+  font-family: var(--serif); font-size: .85rem; color: var(--ink); cursor: pointer;
+}
+
+/* ─── ARTICLE GRID ─── */
+.article-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.3rem; }
+
+.article-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  cursor: pointer;
+  transition: box-shadow .2s, transform .2s;
+  display: flex; flex-direction: column;
+}
+.article-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+
+.card-cover {
+  width: 100%; height: 160px;
+  object-fit: cover; display: block;
+  background: linear-gradient(135deg, var(--cream) 0%, var(--border) 100%);
+}
+.card-cover-placeholder {
+  width: 100%; height: 160px;
+  background: linear-gradient(135deg, #e8e2d8 0%, #d4cec4 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.5rem; color: var(--border);
+}
+
+.card-body { padding: 1rem 1.1rem; flex: 1; display: flex; flex-direction: column; gap: .5rem; }
+.card-title { font-family: var(--display); font-size: 1.05rem; font-weight: 700; line-height: 1.3; }
+.card-summary { font-size: .85rem; color: var(--muted); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.card-tags { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: auto; padding-top: .4rem; }
+.card-tag { padding: .2rem .55rem; border-radius: 12px; font-size: .72rem; font-family: var(--mono); font-weight: 600; }
+.card-meta { font-size: .75rem; color: var(--muted); font-family: var(--mono); display: flex; gap: .8rem; }
+
+/* ─── PAGINATION ─── */
+.pagination { display: flex; gap: .4rem; align-items: center; justify-content: center; margin-top: 2rem; }
+.page-btn {
+  width: 36px; height: 36px; border-radius: var(--r);
+  border: 1px solid var(--border); background: var(--card-bg);
+  cursor: pointer; font-family: var(--mono); font-size: .85rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s; color: var(--ink);
+}
+.page-btn:hover { background: var(--gold); border-color: var(--gold); color: var(--ink); }
+.page-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.page-btn:disabled { opacity: .4; cursor: default; }
+
+/* ─── SEARCH RESULTS ─── */
+.search-results { display: flex; flex-direction: column; gap: .8rem; }
+.search-item {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1rem 1.2rem;
+  cursor: pointer; transition: box-shadow .18s;
+  display: flex; gap: 1rem; align-items: flex-start;
+}
+.search-item:hover { box-shadow: var(--shadow); }
+.search-thumb { width: 72px; height: 56px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+.search-info { flex: 1; }
+.search-title { font-family: var(--display); font-weight: 700; font-size: 1rem; }
+.search-summary { font-size: .83rem; color: var(--muted); }
+mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; padding: 0 2px; }
+
+/* ═══════════════════════════════════════════════════════
+   ARTICLE VIEW
+═══════════════════════════════════════════════════════ */
+.article-view { max-width: 760px; margin: 0 auto; }
+
+.article-header { margin-bottom: 2rem; }
+.article-header .back-btn {
+  font-family: var(--mono); font-size: .78rem; color: var(--muted);
+  cursor: pointer; display: inline-flex; align-items: center; gap: .4rem;
+  margin-bottom: 1rem; border: none; background: none; padding: 0;
+  transition: color .15s;
+}
+.article-header .back-btn:hover { color: var(--gold); }
+.article-cover { width: 100%; max-height: 420px; object-fit: cover; border-radius: var(--r); margin-bottom: 1.5rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem,4vw,2.8rem); font-weight: 900; line-height: 1.15; margin-bottom: .8rem; }
+.article-byline { font-family: var(--mono); font-size: .78rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
+.article-summary { font-size: 1.1rem; color: var(--muted); border-left: 3px solid var(--gold); padding-left: 1rem; margin-bottom: 1.5rem; font-style: italic; }
+.article-tag-row { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 2rem; }
+
+/* ─── CHUNK RENDERER ─── */
+.chunk-container { display: flex; flex-direction: column; gap: .8rem; }
+
+.chunk { line-height: 1.8; }
+.chunk-text { font-size: 1.05rem; }
+.chunk-h2 { font-family: var(--display); font-size: 1.7rem; font-weight: 700; margin-top: 1.2rem; padding-bottom: .4rem; border-bottom: 1px solid var(--border); }
+.chunk-h3 { font-family: var(--display); font-size: 1.25rem; font-weight: 700; margin-top: .8rem; color: var(--rust); }
+.chunk-img { width: 100%; border-radius: var(--r); }
+.chunk-img-wrap { text-align: center; }
+.chunk-img-caption { font-size: .82rem; color: var(--muted); font-style: italic; margin-top: .4rem; font-family: var(--mono); }
+.chunk-code {
+  background: var(--ink); color: #e8e2d8;
+  padding: 1.1rem 1.3rem; border-radius: var(--r);
+  font-family: var(--mono); font-size: .88rem; line-height: 1.6;
+  overflow-x: auto; white-space: pre;
+}
+.chunk-quote {
+  border-left: 4px solid var(--gold);
+  padding: .8rem 1.2rem;
+  background: rgba(184,134,11,.06);
+  border-radius: 0 var(--r) var(--r) 0;
+  font-style: italic; color: var(--muted); font-size: 1.05rem;
+}
+.chunk-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.chunk-table th { background: var(--ink); color: var(--paper); padding: .5rem .8rem; text-align: left; font-family: var(--mono); font-size: .8rem; }
+.chunk-table td { padding: .45rem .8rem; border-bottom: 1px solid var(--cream); }
+.chunk-table tr:hover td { background: var(--cream); }
+.chunk-divider { border: none; border-top: 2px solid var(--border); margin: 1rem 0; }
+
+.load-more-btn {
+  width: 100%; margin-top: 1.2rem;
+  background: var(--cream); border: 1px solid var(--border);
+  border-radius: var(--r); padding: .7rem;
+  font-family: var(--mono); font-size: .85rem; cursor: pointer;
+  transition: background .15s;
+}
+.load-more-btn:hover { background: var(--border); }
+
+/* ═══════════════════════════════════════════════════════
+   EDITOR / CREATE
+═══════════════════════════════════════════════════════ */
+.editor-modal {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(13,13,15,.7); backdrop-filter: blur(4px);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 1.5rem; overflow-y: auto;
+}
+.editor-panel {
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  width: 100%; max-width: 860px;
+  padding: 2rem;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp .25s ease;
+}
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } }
+
+.editor-title { font-family: var(--display); font-size: 1.5rem; font-weight: 900; margin-bottom: 1.4rem; }
+
+.field { margin-bottom: 1.1rem; }
+.field label { display: block; font-family: var(--mono); font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: .35rem; }
+.field input, .field textarea, .field select {
+  width: 100%;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: .55rem .9rem;
+  font-family: var(--serif); font-size: .95rem; color: var(--ink);
+  outline: none; transition: border-color .18s;
+  resize: vertical;
+}
+.field input:focus, .field textarea:focus { border-color: var(--gold); }
+.field textarea { min-height: 90px; }
+
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+/* chunk editor */
+.chunk-editor { border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.chunk-editor-toolbar {
+  background: var(--cream); border-bottom: 1px solid var(--border);
+  padding: .5rem .8rem; display: flex; flex-wrap: wrap; gap: .4rem;
+}
+.chunk-type-btn {
+  padding: .28rem .65rem; border-radius: 4px; border: 1px solid var(--border);
+  background: var(--card-bg); font-family: var(--mono); font-size: .75rem;
+  cursor: pointer; transition: all .15s; color: var(--ink);
+}
+.chunk-type-btn:hover, .chunk-type-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+.chunks-list { max-height: 400px; overflow-y: auto; padding: .6rem; display: flex; flex-direction: column; gap: .5rem; }
+.chunk-item {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 4px; padding: .6rem .8rem;
+  display: flex; align-items: flex-start; gap: .5rem;
+}
+.chunk-item-type {
+  font-family: var(--mono); font-size: .7rem; color: var(--muted);
+  flex-shrink: 0; padding-top: .2rem; width: 52px;
+  text-transform: uppercase; letter-spacing: .05em;
+}
+.chunk-item-content { flex: 1; font-size: .88rem; word-break: break-word; white-space: pre-wrap; max-height: 80px; overflow: hidden; }
+.chunk-item-del {
+  color: var(--muted); font-size: .85rem; cursor: pointer;
+  border: none; background: none; padding: 2px 5px;
+  transition: color .15s; flex-shrink: 0;
+}
+.chunk-item-del:hover { color: var(--rust); }
+
+.chunk-input-area { padding: .8rem; border-top: 1px solid var(--cream); background: var(--paper); }
+.chunk-input-area textarea {
+  width: 100%; min-height: 72px; resize: vertical;
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 4px; padding: .5rem .7rem;
+  font-family: var(--mono); font-size: .85rem; outline: none;
+}
+.chunk-input-area textarea:focus { border-color: var(--gold); }
+.chunk-input-row { display: flex; gap: .5rem; margin-top: .5rem; align-items: center; }
+.chunk-type-select {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 4px; padding: .4rem .6rem;
+  font-family: var(--mono); font-size: .8rem; color: var(--ink);
+}
+
+/* tag input */
+.tags-input-wrap { display: flex; flex-wrap: wrap; gap: .3rem; padding: .4rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--r); cursor: text; }
+.tags-input-wrap input { border: none; outline: none; background: none; font-family: var(--serif); font-size: .9rem; flex: 1; min-width: 120px; }
+.tag-badge {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .2rem .6rem; border-radius: 12px;
+  font-family: var(--mono); font-size: .75rem; font-weight: 600;
+  color: #fff; background: var(--gold);
+}
+.tag-badge-x { cursor: pointer; opacity: .7; }
+.tag-badge-x:hover { opacity: 1; }
+
+/* upload area */
+.upload-area {
+  border: 2px dashed var(--border); border-radius: var(--r);
+  padding: 1.5rem; text-align: center; cursor: pointer;
+  transition: border-color .18s, background .18s;
+  background: var(--card-bg);
+}
+.upload-area:hover, .upload-area.drag { border-color: var(--gold); background: rgba(184,134,11,.04); }
+.upload-area img { max-width: 100%; max-height: 180px; object-fit: cover; border-radius: 4px; margin-top: .6rem; }
+.upload-area p { color: var(--muted); font-size: .88rem; }
+
+.editor-actions { display: flex; justify-content: flex-end; gap: .7rem; margin-top: 1.4rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+
+/* ═══════════════════════════════════════════════════════
+   STATES
+═══════════════════════════════════════════════════════ */
+.empty-state { text-align: center; padding: 4rem 2rem; color: var(--muted); }
+.empty-state .icon { font-size: 3rem; margin-bottom: .8rem; }
+.empty-state p { font-size: 1rem; }
+
+.spinner {
+  width: 28px; height: 28px; border: 3px solid var(--cream);
+  border-top-color: var(--gold); border-radius: 50%;
+  animation: spin .7s linear infinite; margin: 2rem auto;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.toast {
+  position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 999;
+  background: var(--ink); color: var(--paper); padding: .75rem 1.3rem;
+  border-radius: var(--r); font-size: .88rem; font-family: var(--mono);
+  box-shadow: var(--shadow-lg); transform: translateY(0);
+  animation: toastIn .25s ease;
+  border-left: 3px solid var(--gold);
+}
+.toast.error { border-left-color: var(--rust); }
+@keyframes toastIn { from { transform: translateY(12px); opacity: 0; } }
+
+/* ─── DECORATIVE HEADER RULE ─── */
+.section-rule {
+  display: flex; align-items: center; gap: 1rem; margin-bottom: 1.4rem;
+}
+.section-rule::before, .section-rule::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+.section-rule-text {
+  font-family: var(--mono); font-size: .7rem; letter-spacing: .15em;
+  text-transform: uppercase; color: var(--muted);
+}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--cream); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- HEADER -->
+  <header>
+    <div class="header-inner">
+      <div class="logo" onclick="App.showHome()">
+        NEXUS<span>ENCYCLOPAEDIA</span>
+      </div>
+      <div class="search-wrap">
+        <input type="search" id="searchInput" placeholder="Поиск статей…" autocomplete="off">
+        <span class="search-icon">⌕</span>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-ghost btn-sm" onclick="App.showHome()">Главная</button>
+        <button class="btn btn-primary btn-sm" onclick="Editor.open()">＋ Добавить статью</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main>
+    <div class="layout">
+      <!-- SIDEBAR -->
+      <aside id="sidebar">
+        <h3>Разделы</h3>
+        <div class="tag-cloud" id="tagCloud">
+          <div class="spinner" style="width:16px;height:16px;border-width:2px;margin:0"></div>
+        </div>
+        <div class="sidebar-stats" id="sidebarStats"></div>
+      </aside>
+
+      <!-- CONTENT -->
+      <div class="content-area" id="contentArea">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- EDITOR MODAL -->
+<div class="editor-modal" id="editorModal" style="display:none">
+  <div class="editor-panel">
+    <div class="editor-title">✦ Новая статья</div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Заголовок *</label>
+        <input type="text" id="ef-title" placeholder="Название статьи">
+      </div>
+      <div class="field">
+        <label>Автор</label>
+        <input type="text" id="ef-author" placeholder="Ваше имя">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Краткое описание</label>
+      <textarea id="ef-summary" placeholder="Одним абзацем: о чём эта статья?"></textarea>
+    </div>
+
+    <div class="field">
+      <label>Ключевые слова / Теги</label>
+      <div class="tags-input-wrap" id="tagsWrap" onclick="document.getElementById('tagInput').focus()">
+        <input type="text" id="tagInput" placeholder="Введите тег и нажмите Enter…">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Обложка</label>
+      <div class="upload-area" id="coverUploadArea">
+        <input type="file" id="coverFile" accept="image/*" style="display:none">
+        <p>Перетащите изображение или <u onclick="document.getElementById('coverFile').click()" style="cursor:pointer;color:var(--gold)">выберите файл</u></p>
+        <img id="coverPreview" style="display:none">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Содержимое статьи (чанки)</label>
+      <div class="chunk-editor">
+        <div class="chunk-editor-toolbar" id="chunkToolbar">
+          <span style="font-family:var(--mono);font-size:.72rem;color:var(--muted);align-self:center">Тип блока:</span>
+          <button class="chunk-type-btn active" data-type="text">¶ Текст</button>
+          <button class="chunk-type-btn" data-type="heading">H Заголовок</button>
+          <button class="chunk-type-btn" data-type="quote">❝ Цитата</button>
+          <button class="chunk-type-btn" data-type="code">⌨ Код</button>
+          <button class="chunk-type-btn" data-type="image">🖼 Картинка</button>
+          <button class="chunk-type-btn" data-type="divider">— Разделитель</button>
+        </div>
+        <div class="chunks-list" id="chunksList">
+          <div class="empty-state" style="padding:1.2rem">
+            <p style="font-size:.85rem">Блоки появятся здесь. Начните добавлять контент ↓</p>
+          </div>
+        </div>
+        <div class="chunk-input-area">
+          <textarea id="chunkText" placeholder="Введите текст блока…"></textarea>
+          <div class="chunk-input-row">
+            <select class="chunk-type-select" id="chunkTypeSelect">
+              <option value="text">Текст</option>
+              <option value="heading">Заголовок</option>
+              <option value="quote">Цитата</option>
+              <option value="code">Код</option>
+              <option value="image">URL картинки</option>
+              <option value="divider">Разделитель</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="Editor.addChunk()">＋ Добавить блок</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="editor-actions">
+      <button class="btn btn-ghost" onclick="Editor.close()">Отмена</button>
+      <button class="btn btn-primary" onclick="Editor.save()">Опубликовать статью →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   CONFIG
+═══════════════════════════════════════════════════════ */
+const API = 'http://localhost:3000/api'; // ← укажи свой URL бэкенда
+
+/* ═══════════════════════════════════════════════════════
+   UTILITIES
+═══════════════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+const el = (tag, cls, html) => {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html !== undefined) e.innerHTML = html;
+  return e;
+};
+
+let toastTimer;
+function toast(msg, isErr = false) {
+  clearTimeout(toastTimer);
+  let t = document.querySelector('.toast');
+  if (!t) { t = el('div','toast'); document.body.appendChild(t); }
+  t.textContent = msg;
+  t.className = 'toast' + (isErr ? ' error' : '');
+  toastTimer = setTimeout(() => t.remove(), 3200);
+}
+
+async function apiFetch(url, opts = {}) {
+  try {
+    const r = await fetch(API + url, {
+      headers: { 'Content-Type': 'application/json', ...opts.headers },
+      ...opts
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || r.statusText);
+    return data;
+  } catch (e) {
+    toast(e.message, true);
+    throw e;
+  }
+}
+
+function highlight(text, q) {
+  if (!q || !text) return text || '';
+  return text.replace(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'), '<mark>$1</mark>');
+}
+
+function tagPillStyle(color = '#6366f1') {
+  const hex = color.replace('#','');
+  const r = parseInt(hex.slice(0,2),16), g = parseInt(hex.slice(2,4),16), b = parseInt(hex.slice(4,6),16);
+  const lum = (0.299*r + 0.587*g + 0.114*b) / 255;
+  return `background:${color};color:${lum > .55 ? '#111' : '#fff'}`;
+}
+
+/* ═══════════════════════════════════════════════════════
+   APP STATE
+═══════════════════════════════════════════════════════ */
+const State = {
+  view: 'home',      // 'home' | 'article' | 'search'
+  page: 1,
+  sort: 'created_at',
+  activeTag: null,
+  searchQ: '',
+  tags: [],
+  stats: {},
+};
+
+/* ═══════════════════════════════════════════════════════
+   CHUNK RENDERER
+═══════════════════════════════════════════════════════ */
+function renderChunk(c) {
+  switch (c.type) {
+    case 'heading':
+      const level = (c.meta?.level || 2) === 3 ? 'h3' : 'h2';
+      return `<div class="chunk chunk-${level}">${c.content}</div>`;
+    case 'image':
+      const cap = c.meta?.caption || '';
+      return `<div class="chunk chunk-img-wrap"><img class="chunk-img" src="${c.content}" alt="${cap}" loading="lazy"><p class="chunk-img-caption">${cap}</p></div>`;
+    case 'code':
+      return `<pre class="chunk chunk-code">${c.content.replace(/</g,'&lt;')}</pre>`;
+    case 'quote':
+      return `<blockquote class="chunk chunk-quote">${c.content}</blockquote>`;
+    case 'table':
+      try {
+        const tbl = JSON.parse(c.content);
+        const head = tbl[0].map(h => `<th>${h}</th>`).join('');
+        const body = tbl.slice(1).map(row => `<tr>${row.map(td=>`<td>${td}</td>`).join('')}</tr>`).join('');
+        return `<div class="chunk"><table class="chunk-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+      } catch { return `<div class="chunk chunk-text">${c.content}</div>`; }
+    case 'divider':
+      return `<hr class="chunk chunk-divider">`;
+    default:
+      return `<div class="chunk chunk-text">${c.content.replace(/\n/g,'<br>')}</div>`;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════════════════ */
+async function loadSidebar() {
+  const [tagsData, stats] = await Promise.all([
+    apiFetch('/tags').catch(() => []),
+    apiFetch('/stats').catch(() => ({}))
+  ]);
+  State.tags = tagsData;
+  State.stats = stats;
+  renderSidebar();
+}
+
+function renderSidebar() {
+  // Tags
+  const tc = $('tagCloud');
+  tc.innerHTML = '';
+  if (!State.tags.length) { tc.innerHTML = '<p style="font-size:.8rem;color:var(--muted)">Нет тегов</p>'; }
+  else {
+    const all = el('span','tag-pill' + (!State.activeTag ? ' active' : ''), '# Все');
+    all.style.cssText = tagPillStyle('#555');
+    all.onclick = () => { State.activeTag = null; App.showHome(); };
+    tc.appendChild(all);
+    State.tags.forEach(t => {
+      const p = el('span','tag-pill' + (State.activeTag === t.name ? ' active' : ''), `${t.name} <small style="opacity:.65">${t.count}</small>`);
+      p.style.cssText = tagPillStyle(t.color);
+      p.onclick = () => { State.activeTag = State.activeTag === t.name ? null : t.name; App.showHome(); };
+      tc.appendChild(p);
+    });
+  }
+  // Stats
+  const ss = $('sidebarStats');
+  ss.innerHTML = `
+    <div class="sidebar-stats">
+      <div class="stat-row"><span>Статей</span><strong>${State.stats.articles || 0}</strong></div>
+      <div class="stat-row"><span>Просмотров</span><strong>${State.stats.totalViews || 0}</strong></div>
+      <div class="stat-row"><span>Блоков</span><strong>${State.stats.chunks || 0}</strong></div>
+      <div class="stat-row"><span>Тегов</span><strong>${State.stats.tags || 0}</strong></div>
+    </div>`;
+}
+
+/* ═══════════════════════════════════════════════════════
+   ARTICLE LIST
+═══════════════════════════════════════════════════════ */
+async function loadArticles() {
+  const ca = $('contentArea');
+  ca.innerHTML = '<div class="spinner"></div>';
+  const params = new URLSearchParams({ page: State.page, sort: State.sort });
+  if (State.activeTag) params.set('tag', State.activeTag);
+  const data = await apiFetch('/articles?' + params).catch(() => null);
+  if (!data) { ca.innerHTML = '<div class="empty-state"><div class="icon">⚠</div><p>Ошибка загрузки</p></div>'; return; }
+
+  const title = State.activeTag ? `# ${State.activeTag}` : 'Все статьи';
+  let html = `
+    <div class="toolbar">
+      <div class="toolbar-title">${title}</div>
+      <select class="sort-select" onchange="State.sort=this.value;State.page=1;loadArticles()">
+        <option value="created_at" ${State.sort==='created_at'?'selected':''}>По дате</option>
+        <option value="views" ${State.sort==='views'?'selected':''}>По просмотрам</option>
+        <option value="title" ${State.sort==='title'?'selected':''}>По алфавиту</option>
+      </select>
+    </div>`;
+
+  if (!data.articles.length) {
+    html += '<div class="empty-state"><div class="icon">📚</div><p>Статей пока нет. Будьте первым!</p></div>';
+  } else {
+    html += '<div class="article-grid">';
+    data.articles.forEach(a => {
+      const tags = a.tags ? a.tags.split(',') : [];
+      const colors = a.tag_colors ? a.tag_colors.split(',') : [];
+      const tagHtml = tags.slice(0,4).map((t,i) => `<span class="card-tag" style="${tagPillStyle(colors[i]||'#6366f1')}">${t}</span>`).join('');
+      const cover = a.cover_url
+        ? `<img class="card-cover" src="${a.cover_url}" alt="" loading="lazy">`
+        : `<div class="card-cover-placeholder">📄</div>`;
+      html += `
+        <div class="article-card" onclick="App.showArticle('${a.slug}')">
+          ${cover}
+          <div class="card-body">
+            <div class="card-title">${a.title}</div>
+            ${a.summary ? `<div class="card-summary">${a.summary}</div>` : ''}
+            <div class="card-meta">
+              <span>👤 ${a.author}</span>
+              <span>👁 ${a.views}</span>
+              <span>🗓 ${new Date(a.created_at).toLocaleDateString('ru')}</span>
+            </div>
+            ${tagHtml ? `<div class="card-tags">${tagHtml}</div>` : ''}
+          </div>
+        </div>`;
+    });
+    html += '</div>';
+
+    // Pagination
+    const totalPages = Math.ceil(data.total / data.limit);
+    if (totalPages > 1) {
+      html += '<div class="pagination">';
+      html += `<button class="page-btn" ${State.page<=1?'disabled':''} onclick="State.page--;loadArticles()">‹</button>`;
+      for (let p = Math.max(1, State.page-2); p <= Math.min(totalPages, State.page+2); p++) {
+        html += `<button class="page-btn ${p===State.page?'active':''}" onclick="State.page=${p};loadArticles()">${p}</button>`;
+      }
+      html += `<button class="page-btn" ${State.page>=totalPages?'disabled':''} onclick="State.page++;loadArticles()">›</button>`;
+      html += '</div>';
+    }
+  }
+
+  ca.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════════
+   ARTICLE VIEW + SMART CHUNK LAZY LOADING
+═══════════════════════════════════════════════════════ */
+const ArticleView = {
+  articleId: null,
+  chunkPage: 1,
+  totalChunks: 0,
+  chunkPageSize: 20,
+
+  async load(slug) {
+    const ca = $('contentArea');
+    ca.innerHTML = '<div class="spinner"></div>';
+    this.chunkPage = 1;
+
+    const article = await apiFetch(`/articles/${slug}`).catch(() => null);
+    if (!article) { ca.innerHTML = '<div class="empty-state"><div class="icon">404</div><p>Статья не найдена</p></div>'; return; }
+
+    this.articleId = article.id;
+    const tags = article.tags ? article.tags.split(',') : [];
+    const colors = article.tag_colors ? article.tag_colors.split(',') : [];
+    const tagHtml = tags.map((t,i) => `<span class="tag-pill" style="${tagPillStyle(colors[i]||'#6366f1')}">${t}</span>`).join('');
+
+    ca.innerHTML = `
+      <div class="article-view">
+        <div class="article-header">
+          <button class="back-btn" onclick="App.showHome()">← Вернуться к списку</button>
+          ${article.cover_url ? `<img class="article-cover" src="${article.cover_url}" alt="">` : ''}
+          <h1 class="article-title">${article.title}</h1>
+          <div class="article-byline">
+            <span>✍ ${article.author}</span>
+            <span>👁 ${article.views} просмотров</span>
+            <span>🗓 ${new Date(article.created_at).toLocaleDateString('ru',{day:'numeric',month:'long',year:'numeric'})}</span>
+          </div>
+          ${article.summary ? `<div class="article-summary">${article.summary}</div>` : ''}
+          ${tagHtml ? `<div class="article-tag-row">${tagHtml}</div>` : ''}
+        </div>
+        <div class="section-rule"><span class="section-rule-text">Содержание</span></div>
+        <div class="chunk-container" id="chunkContainer"></div>
+        <div id="loadMoreWrap"></div>
+      </div>`;
+
+    await this.loadMoreChunks();
+  },
+
+  async loadMoreChunks() {
+    const container = $('chunkContainer');
+    const wrap = $('loadMoreWrap');
+    if (!container) return;
+
+    wrap.innerHTML = '<div class="spinner" style="width:20px;height:20px;border-width:2px;margin:1rem auto"></div>';
+
+    const data = await apiFetch(`/articles/${this.articleId}/chunks?page=${this.chunkPage}&limit=${this.chunkPageSize}`).catch(() => null);
+    wrap.innerHTML = '';
+
+    if (!data) return;
+    this.totalChunks = data.total;
+
+    if (!data.chunks.length && this.chunkPage === 1) {
+      container.innerHTML = '<div class="empty-state" style="padding:2rem"><p>Содержимое этой статьи пока пусто.</p></div>';
+      return;
+    }
+
+    data.chunks.forEach(c => {
+      const div = document.createElement('div');
+      div.innerHTML = renderChunk(c);
+      container.appendChild(div.firstChild || div);
+    });
+
+    const loaded = (this.chunkPage - 1) * this.chunkPageSize + data.chunks.length;
+    if (loaded < this.totalChunks) {
+      wrap.innerHTML = `<button class="load-more-btn" onclick="ArticleView.chunkPage++;ArticleView.loadMoreChunks()">
+        Загрузить ещё блоки (${this.totalChunks - loaded} осталось)
+      </button>`;
+    }
+  }
+};
+
+/* ═══════════════════════════════════════════════════════
+   SEARCH
+═══════════════════════════════════════════════════════ */
+let searchDebounce;
+$('searchInput').addEventListener('input', e => {
+  clearTimeout(searchDebounce);
+  const q = e.target.value.trim();
+  if (q.length < 2) { if (State.view === 'search') App.showHome(); return; }
+  searchDebounce = setTimeout(() => doSearch(q), 320);
+});
+
+async function doSearch(q) {
+  State.view = 'search';
+  State.searchQ = q;
+  const ca = $('contentArea');
+  ca.innerHTML = '<div class="spinner"></div>';
+  const data = await apiFetch(`/search?q=${encodeURIComponent(q)}`).catch(() => null);
+  if (!data) return;
+
+  if (!data.results.length) {
+    ca.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>По запросу «${q}» ничего не найдено</p></div>`;
+    return;
+  }
+
+  let html = `<div class="toolbar"><div class="toolbar-title">Результаты: «${q}»</div><span style="color:var(--muted);font-size:.85rem">${data.results.length} статей</span></div>`;
+  html += '<div class="search-results">';
+  data.results.forEach(a => {
+    const thumb = a.cover_url ? `<img class="search-thumb" src="${a.cover_url}" alt="">` : '';
+    html += `<div class="search-item" onclick="App.showArticle('${a.slug}')">
+      ${thumb}
+      <div class="search-info">
+        <div class="search-title">${highlight(a.title, q)}</div>
+        <div class="search-summary">${highlight(a.summary || '', q)}</div>
+        <div class="card-meta" style="margin-top:.3rem"><span>👤 ${a.author}</span><span>👁 ${a.views}</span></div>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  ca.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════════
+   APP ROUTER
+═══════════════════════════════════════════════════════ */
+const App = {
+  showHome() {
+    State.view = 'home';
+    State.page = 1;
+    $('searchInput').value = '';
+    loadArticles();
+  },
+  showArticle(slug) {
+    State.view = 'article';
+    ArticleView.load(slug);
+  }
+};
+
+/* ═══════════════════════════════════════════════════════
+   EDITOR
+═══════════════════════════════════════════════════════ */
+const Editor = {
+  chunks: [],
+  tags: [],
+  coverUrl: '',
+  activeType: 'text',
+
+  open() {
+    this.chunks = [];
+    this.tags = [];
+    this.coverUrl = '';
+    this.activeType = 'text';
+    $('ef-title').value = '';
+    $('ef-author').value = '';
+    $('ef-summary').value = '';
+    $('chunkText').value = '';
+    $('chunkTypeSelect').value = 'text';
+    $('coverPreview').style.display = 'none';
+    this.renderChunks();
+    this.renderTags();
+    $('editorModal').style.display = 'flex';
+  },
+  close() { $('editorModal').style.display = 'none'; },
+
+  addChunk() {
+    const text = $('chunkText').value.trim();
+    const type = $('chunkTypeSelect').value;
+    if (type !== 'divider' && !text) { toast('Введите текст блока', true); return; }
+    this.chunks.push({ type, content: text || '---', meta: null });
+    $('chunkText').value = '';
+    this.renderChunks();
+  },
+
+  removeChunk(i) { this.chunks.splice(i, 1); this.renderChunks(); },
+
+  renderChunks() {
+    const list = $('chunksList');
+    if (!this.chunks.length) {
+      list.innerHTML = '<div class="empty-state" style="padding:1.2rem"><p style="font-size:.85rem">Блоки появятся здесь</p></div>';
+      return;
+    }
+    list.innerHTML = this.chunks.map((c, i) => `
+      <div class="chunk-item">
+        <span class="chunk-item-type">${c.type}</span>
+        <span class="chunk-item-content">${c.content.replace(/</g,'&lt;')}</span>
+        <button class="chunk-item-del" onclick="Editor.removeChunk(${i})">✕</button>
+      </div>`).join('');
+    list.scrollTop = list.scrollHeight;
+  },
+
+  addTag(name) {
+    name = name.trim().slice(0, 80);
+    if (!name || this.tags.includes(name)) return;
+    this.tags.push(name);
+    this.renderTags();
+  },
+
+  removeTag(i) { this.tags.splice(i, 1); this.renderTags(); },
+
+  renderTags() {
+    const wrap = $('tagsWrap');
+    const inp  = $('tagInput');
+    wrap.querySelectorAll('.tag-badge').forEach(e => e.remove());
+    this.tags.forEach((t, i) => {
+      const b = el('span', 'tag-badge', `${t} <span class="tag-badge-x" onclick="Editor.removeTag(${i})">✕</span>`);
+      wrap.insertBefore(b, inp);
+    });
+  },
+
+  async uploadCover(file) {
+    const fd = new FormData(); fd.append('file', file);
+    const r = await fetch(`${API}/upload`, { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!d.url) throw new Error('Upload failed');
+    return d.url;
+  },
+
+  async save() {
+    const title = $('ef-title').value.trim();
+    if (!title) { toast('Введите заголовок', true); return; }
+
+    let cover_url = this.coverUrl;
+    const file = $('coverFile').files[0];
+    if (file) {
+      try { cover_url = await this.uploadCover(file); }
+      catch { toast('Ошибка загрузки обложки', true); return; }
+    }
+
+    try {
+      const result = await apiFetch('/articles', {
+        method: 'POST',
+        body: JSON.stringify({
+          title,
+          author: $('ef-author').value || 'Anonymous',
+          summary: $('ef-summary').value,
+          cover_url,
+          tags: this.tags,
+          chunks: this.chunks,
+        })
+      });
+      this.close();
+      toast('✓ Статья опубликована!');
+      await loadSidebar();
+      App.showArticle(result.slug);
+    } catch {}
+  }
+};
+
+/* Chunk toolbar buttons */
+document.querySelectorAll('.chunk-type-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.chunk-type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    $('chunkTypeSelect').value = btn.dataset.type;
+    Editor.activeType = btn.dataset.type;
+    $('chunkText').placeholder =
+      btn.dataset.type === 'image' ? 'https://example.com/image.jpg' :
+      btn.dataset.type === 'code'  ? 'const x = 42;' :
+      btn.dataset.type === 'quote' ? 'Слова великого человека…' :
+      btn.dataset.type === 'heading' ? 'Заголовок раздела' :
+      btn.dataset.type === 'divider' ? '(не нужно — просто нажмите "Добавить")' :
+      'Введите текст абзаца…';
+  };
+});
+
+/* Tag input */
+$('tagInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    Editor.addTag($('tagInput').value);
+    $('tagInput').value = '';
+  }
+});
+
+/* Cover upload */
+const coverArea = $('coverUploadArea');
+coverArea.addEventListener('dragover', e => { e.preventDefault(); coverArea.classList.add('drag'); });
+coverArea.addEventListener('dragleave', () => coverArea.classList.remove('drag'));
+coverArea.addEventListener('drop', e => {
+  e.preventDefault(); coverArea.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) previewCover(file);
+});
+$('coverFile').addEventListener('change', e => { if (e.target.files[0]) previewCover(e.target.files[0]); });
+
+function previewCover(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = $('coverPreview');
+    img.src = e.target.result;
+    img.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+/* Close modal on backdrop click */
+$('editorModal').addEventListener('click', e => { if (e.target === $('editorModal')) Editor.close(); });
+
+/* Keyboard: Esc to close */
+document.addEventListener('keydown', e => { if (e.key === 'Escape') Editor.close(); });
+
+/* ═══════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════ */
+(async () => {
+  await loadSidebar();
+  await loadArticles();
+})();
+</script>
+</body>
+</html>
