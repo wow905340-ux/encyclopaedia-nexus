@@ -544,7 +544,7 @@ app.get('/api/ratings/:articleId', async (req, res) => {
 app.post('/api/ratings/:articleId', async (req, res) => {
   try {
     const articleId = parseInt(req.params.articleId);
-    const { stars } = req.body;
+    const stars = parseInt(req.body.stars);
     if (!stars || stars < 1 || stars > 5) return err(res, 400, 'Stars must be 1-5');
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
     await pool.query(
