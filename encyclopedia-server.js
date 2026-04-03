@@ -195,9 +195,8 @@ app.get('/api/articles', async (req, res) => {
 
     const rows = await query(sql, params);
 
-    const [[{ total }]] = [await query(
-      `SELECT COUNT(*) AS total FROM articles WHERE status = ?`, [status]
-    )];
+    const countRows = await query(`SELECT COUNT(*) AS total FROM articles WHERE status = ?`, [status]);
+    const total = countRows[0].total;
 
     res.json({ page, limit, total: Number(total), articles: rows });
   } catch (e) {
@@ -241,12 +240,12 @@ app.post('/api/articles', async (req, res) => {
     const existing = await query('SELECT id FROM articles WHERE slug LIKE ?', [`${slug}%`]);
     if (existing.length) slug += `-${Date.now()}`;
 
-    const result = await query(
+    const insertResult = await pool.query(
       `INSERT INTO articles (slug, title, summary, author, cover_url, status)
        VALUES (?, ?, ?, ?, ?, 'published')`,
       [slug, title.trim(), summary || null, author || 'Anonymous', cover_url || null]
     );
-    const articleId = Number(result.insertId);
+    const articleId = Number(insertResult[0].insertId);
 
     // insert tags
     if (tags.length) {
@@ -255,8 +254,8 @@ app.post('/api/articles', async (req, res) => {
         if (!name) continue;
         let [tag] = await query('SELECT id FROM tags WHERE name = ?', [name]);
         if (!tag) {
-          const r = await query('INSERT INTO tags (name) VALUES (?)', [name]);
-          tag = { id: Number(r.insertId) };
+          const [tagRes] = await pool.query('INSERT INTO tags (name) VALUES (?)', [name]);
+          tag = { id: Number(tagRes.insertId) };
         }
         await query('INSERT IGNORE INTO article_tags VALUES (?, ?)', [articleId, tag.id]);
       }
@@ -309,8 +308,8 @@ app.put('/api/articles/:id', async (req, res) => {
         if (!name) continue;
         let [tag] = await query('SELECT id FROM tags WHERE name = ?', [name]);
         if (!tag) {
-          const r = await query('INSERT INTO tags (name) VALUES (?)', [name]);
-          tag = { id: Number(r.insertId) };
+          const [tagRes] = await pool.query('INSERT INTO tags (name) VALUES (?)', [name]);
+          tag = { id: Number(tagRes.insertId) };
         }
         await query('INSERT IGNORE INTO article_tags VALUES (?, ?)', [id, tag.id]);
       }
@@ -347,11 +346,9 @@ app.get('/api/articles/:id/chunks', async (req, res) => {
       [articleId, limit, offset]
     );
 
-    const [[{ total }]] = [await query(
-      'SELECT COUNT(*) AS total FROM chunks WHERE article_id = ?', [articleId]
-    )];
+    const totalRows = await query('SELECT COUNT(*) AS total FROM chunks WHERE article_id = ?', [articleId]);
 
-    res.json({ page, limit, total: Number(total), chunks });
+    res.json({ page, limit, total: Number(totalRows[0].total), chunks });
   } catch (e) {
     err(res, 500, 'DB error');
   }
@@ -364,10 +361,8 @@ app.post('/api/articles/:id/chunks', async (req, res) => {
     const { chunks = [] } = req.body;
 
     // current count
-    const [[{ cnt }]] = [await query(
-      'SELECT COUNT(*) AS cnt FROM chunks WHERE article_id = ?', [articleId]
-    )];
-    const current = Number(cnt);
+    const cntRows = await query('SELECT COUNT(*) AS cnt FROM chunks WHERE article_id = ?', [articleId]);
+    const current = Number(cntRows[0].cnt);
     const space   = CONFIG.chunk.maxPerArticle - current;
     if (space <= 0) return err(res, 400, 'Chunk limit reached');
 
@@ -486,7 +481,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return err(res, 400, 'No file');
     const url = `/uploads/${req.file.filename}`;
-    await query(
+    await pool.query(
       'INSERT INTO media (filename, mime, size_bytes, url) VALUES (?,?,?,?)',
       [req.file.filename, req.file.mimetype, req.file.size, url]
     );
@@ -500,9 +495,10 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
 app.get('/api/stats', async (_, res) => {
   try {
-    const [[a]] = [await query('SELECT COUNT(*) AS total, SUM(views) AS views FROM articles WHERE status="published"')];
-    const [[c]] = [await query('SELECT COUNT(*) AS total FROM chunks')];
-    const [[t]] = [await query('SELECT COUNT(*) AS total FROM tags')];
+    const [aRows] = [await query('SELECT COUNT(*) AS total, SUM(views) AS views FROM articles WHERE status="published"')];
+    const [cRows] = [await query('SELECT COUNT(*) AS total FROM chunks')];
+    const [tRows] = [await query('SELECT COUNT(*) AS total FROM tags')];
+    const a = aRows[0], c = cRows[0], t = tRows[0];
     res.json({
       articles: Number(a.total),
       totalViews: Number(a.views || 0),
@@ -522,6 +518,66 @@ app.get('/api/health', async (_, res) => {
     res.json({ status: 'ok', time: new Date().toISOString() });
   } catch (e) {
     res.status(503).json({ status: 'db_down' });
+  }
+});
+
+
+// ─── RATINGS ───────────────────────────────────────────────────────────────
+
+// GET /api/ratings/:articleId — get rating for article
+app.get('/api/ratings/:articleId', async (req, res) => {
+  try {
+    const articleId = parseInt(req.params.articleId);
+    const rows = await query(
+      'SELECT AVG(stars) AS avg, COUNT(*) AS count FROM ratings WHERE article_id = ?',
+      [articleId]
+    );
+    const avg = parseFloat(rows[0].avg) || 0;
+    const count = parseInt(rows[0].count) || 0;
+    res.json({ avg: Math.round(avg * 10) / 10, count });
+  } catch (e) {
+    err(res, 500, 'DB error');
+  }
+});
+
+// POST /api/ratings/:articleId — rate article (1 vote per IP)
+app.post('/api/ratings/:articleId', async (req, res) => {
+  try {
+    const articleId = parseInt(req.params.articleId);
+    const { stars } = req.body;
+    if (!stars || stars < 1 || stars > 5) return err(res, 400, 'Stars must be 1-5');
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+    await pool.query(
+      'INSERT INTO ratings (article_id, ip, stars) VALUES (?,?,?) ON DUPLICATE KEY UPDATE stars=VALUES(stars)',
+      [articleId, ip, parseInt(stars)]
+    );
+    const rows = await query(
+      'SELECT AVG(stars) AS avg, COUNT(*) AS count FROM ratings WHERE article_id = ?',
+      [articleId]
+    );
+    res.json({ avg: Math.round(parseFloat(rows[0].avg) * 10) / 10, count: parseInt(rows[0].count) });
+  } catch (e) {
+    err(res, 500, 'DB error');
+  }
+});
+
+// GET /api/ratings/bulk — get ratings for multiple articles
+app.post('/api/ratings/bulk', async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids?.length) return res.json({});
+    const placeholders = ids.map(() => '?').join(',');
+    const rows = await query(
+      `SELECT article_id, AVG(stars) AS avg, COUNT(*) AS count FROM ratings WHERE article_id IN (${placeholders}) GROUP BY article_id`,
+      ids
+    );
+    const result = {};
+    rows.forEach(r => {
+      result[r.article_id] = { avg: Math.round(parseFloat(r.avg) * 10) / 10, count: parseInt(r.count) };
+    });
+    res.json(result);
+  } catch (e) {
+    err(res, 500, 'DB error');
   }
 });
 
@@ -600,6 +656,18 @@ async function migrate() {
       size_bytes  INT UNSIGNED,
       url         VARCHAR(500),
       uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS ratings (
+      id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      article_id INT UNSIGNED NOT NULL,
+      ip         VARCHAR(64) NOT NULL,
+      stars      TINYINT UNSIGNED NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uniq_ip_article (article_id, ip),
+      FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
     ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
   `);
 
