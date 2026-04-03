@@ -1,0 +1,16 @@
+{
+  "name": "encyclopaedia-nexus",
+  "version": "1.0.0",
+  "main": "encyclopedia-server.js",
+  "scripts": {
+    "start": "node encyclopedia-server.js"
+  },
+  "dependencies": {
+    "express": "*",
+    "mariadb": "*",
+    "multer": "*",
+    "cors": "*",
+    "helmet": "*",
+    "express-rate-limit": "*"
+  }
+}
