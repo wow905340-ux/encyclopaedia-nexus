@@ -1,6 +1,6 @@
 /**
  * ENCYCLOPAEDIA NEXUS — Backend Server
- * Node.js + Express + MariaDB
+ * Node.js + Express + Этот сервер такой:
  * 
  * Setup:
  *   npm install express mariadb multer sharp cors helmet express-rate-limit
