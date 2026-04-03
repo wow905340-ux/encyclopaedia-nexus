@@ -1,9 +1,13 @@
 {
   "name": "encyclopaedia-nexus",
   "version": "1.0.0",
+  "description": "Encyclopaedia NEXUS — full-stack wiki engine with MariaDB",
   "main": "encyclopedia-server.js",
   "scripts": {
     "start": "node encyclopedia-server.js"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "dependencies": {
     "express": "*",
