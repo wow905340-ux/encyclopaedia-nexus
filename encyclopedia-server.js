@@ -1,4 +1,4 @@
- /**
+/**
  * ENCYCLOPAEDIA NEXUS — Backend Server
  * Node.js + Express + MariaDB
  * 
@@ -532,13 +532,12 @@ app.get('/api/health', async (_, res) => {
 
 // ─── SERVE FRONTEND ────────────────────────────────────────────────────────
 // Railway не умеет отдавать статику сам — сервер делает это вместо него.
-// index.html должен лежать рядом с этим файлом в том же репо.
 
-app.use(express.static(path.resolve('./')));
+app.use(express.static(__dirname));
 
-// Любой маршрут не из /api отдаёт index.html (SPA fallback)
-app.get('(.*)', (req, res) => {
-  res.sendFile(path.resolve('./index.html'));
+// SPA fallback — все маршруты кроме /api отдают index.html
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // ─── AUTO MIGRATE ──────────────────────────────────────────────────────────
@@ -626,4 +625,3 @@ migrate()
   });
 
 module.exports = app;
-
