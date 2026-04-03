@@ -829,7 +829,7 @@ const ArticleView = {
           <h1 class="article-title">${article.title}</h1>
           <div class="article-byline">
             <span>✍ ${article.author}</span>
-            <span>👁 ${article.views} просмотров</span>
+            <span>👁 ${article.views + 1} просмотров</span>
             <span>🗓 ${new Date(article.created_at).toLocaleDateString('ru',{day:'numeric',month:'long',year:'numeric'})}</span>
           </div>
           ${article.summary ? `<div class="article-summary">${article.summary}</div>` : ''}
