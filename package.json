@@ -7,11 +7,11 @@
   },
   "dependencies": {
     "express": "*",
-    "mariadb": "3.2.3",
     "multer": "*",
     "cors": "*",
     "helmet": "*",
-    "express-rate-limit": "*"
+    "express-rate-limit": "*",
+    "mysql2": "*"
   },
   "type": "commonjs"
 }
