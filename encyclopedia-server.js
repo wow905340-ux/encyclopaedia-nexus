@@ -61,7 +61,7 @@
 'use strict';
 
 const express    = require('express');
-const mariadb    = require('mariadb');
+const mysql      = require('mysql2/promise');
 const multer     = require('multer');
 const path       = require('path');
 const fs         = require('fs');
@@ -83,7 +83,7 @@ const CONFIG = {
     acquireTimeout:         60000,
     connectTimeout:         60000,
     allowPublicKeyRetrieval: true,
-    ssl:                    false,
+    multipleStatements:      false,
     charset:                'utf8mb4',
   },
   upload: {
@@ -102,16 +102,11 @@ const CONFIG = {
 };
 
 // ─── DB POOL ───────────────────────────────────────────────────────────────
-const pool = mariadb.createPool(CONFIG.db);
+const pool = mysql.createPool(CONFIG.db);
 
 async function query(sql, params = []) {
-  let conn;
-  try {
-    conn = await pool.getConnection();
-    return await conn.query(sql, params);
-  } finally {
-    if (conn) conn.release();
-  }
+  const [rows] = await pool.query(sql, params);
+  return rows;
 }
 
 // ─── UPLOAD SETUP ──────────────────────────────────────────────────────────
