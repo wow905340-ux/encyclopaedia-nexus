@@ -1,4 +1,4 @@
-/**
+ /**
  * ENCYCLOPAEDIA NEXUS — Backend Server
  * Node.js + Express + MariaDB
  * 
@@ -537,7 +537,7 @@ app.get('/api/health', async (_, res) => {
 app.use(express.static(path.resolve('./')));
 
 // Любой маршрут не из /api отдаёт index.html (SPA fallback)
-app.get('*', (req, res) => {
+app.get('(.*)', (req, res) => {
   res.sendFile(path.resolve('./index.html'));
 });
 
@@ -626,3 +626,4 @@ migrate()
   });
 
 module.exports = app;
+
