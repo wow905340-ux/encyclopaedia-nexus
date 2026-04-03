@@ -442,6 +442,25 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
   text-transform: uppercase; color: var(--muted);
 }
 
+
+/* ═══ STARS ═══ */
+.stars { display:flex; gap:2px; align-items:center; }
+.star { font-size:1rem; cursor:pointer; transition:transform .15s; user-select:none; }
+.star:hover { transform:scale(1.25); }
+.star.filled { color:#f0c040; }
+.star.empty { color:#c8c0b0; }
+.rating-count { font-family:var(--mono); font-size:.75rem; color:var(--muted); margin-left:.4rem; }
+
+/* ═══ DEV MODE ═══ */
+.devmode-badge {
+  position:fixed; bottom:1rem; left:1rem; z-index:500;
+  background:var(--ink); color:#4ade80;
+  font-family:var(--mono); font-size:.72rem;
+  padding:.4rem .8rem; border-radius:4px;
+  border:1px solid #4ade80;
+  pointer-events:none;
+}
+
 /* ─── SCROLLBAR ─── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--cream); }
@@ -570,7 +589,8 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
 /* ═══════════════════════════════════════════════════════
    CONFIG
 ═══════════════════════════════════════════════════════ */
-const API = 'http://localhost:3000/api'; // ← укажи свой URL бэкенда
+// Автоматически берёт адрес текущей страницы — работает и локально и на Railway
+const API = window.location.origin + '/api';
 
 /* ═══════════════════════════════════════════════════════
    UTILITIES
@@ -603,7 +623,8 @@ async function apiFetch(url, opts = {}) {
     if (!r.ok) throw new Error(data.error || r.statusText);
     return data;
   } catch (e) {
-    toast(e.message, true);
+    console.error('API error:', url, e);
+    toast('⚠ ' + e.message, true);
     throw e;
   }
 }
@@ -742,6 +763,7 @@ async function loadArticles() {
           <div class="card-body">
             <div class="card-title">${a.title}</div>
             ${a.summary ? `<div class="card-summary">${a.summary}</div>` : ''}
+            <div class="stars" style="margin-top:.2rem" onclick="event.stopPropagation()" data-id="${a.id}"></div>
             <div class="card-meta">
               <span>👤 ${a.author}</span>
               <span>👁 ${a.views}</span>
@@ -767,6 +789,14 @@ async function loadArticles() {
   }
 
   ca.innerHTML = html;
+
+  // Load real ratings from DB and render stars on cards
+  const cards = document.querySelectorAll('.stars[data-id]');
+  if (cards.length) {
+    const ids = [...cards].map(el => parseInt(el.dataset.id));
+    await Ratings.loadBulk(ids);
+    cards.forEach(el => Ratings.renderWidget(parseInt(el.dataset.id), el));
+  }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1009,7 +1039,7 @@ const Editor = {
       toast('✓ Статья опубликована!');
       await loadSidebar();
       App.showArticle(result.slug);
-    } catch {}
+    } catch(e) { toast('Ошибка: ' + e.message, true); }
   }
 };
 
@@ -1066,10 +1096,99 @@ $('editorModal').addEventListener('click', e => { if (e.target === $('editorModa
 /* Keyboard: Esc to close */
 document.addEventListener('keydown', e => { if (e.key === 'Escape') Editor.close(); });
 
+
+/* ═══════════════════════════════════════════════════════
+   DEV MODE (только для IP 5.34.113.82)
+═══════════════════════════════════════════════════════ */
+const DEV_IP = '5.34.113.82';
+let isDevMode = false;
+
+async function checkDevMode() {
+  try {
+    const r = await fetch('https://api.ipify.org?format=json');
+    const d = await r.json();
+    if (d.ip === DEV_IP) {
+      isDevMode = true;
+      const badge = el('div', 'devmode-badge', '⚡ DEV MODE');
+      document.body.appendChild(badge);
+      console.log('%c⚡ DEV MODE ACTIVE', 'color:#4ade80;font-size:1.2rem;font-weight:bold');
+    }
+  } catch {}
+}
+
+/* ═══════════════════════════════════════════════════════
+   STARS / RATING SYSTEM
+   - Обычные юзеры: реальный рейтинг из БД
+   - Dev (5.34.113.82): визуальная накрутка только на экране
+═══════════════════════════════════════════════════════ */
+const Ratings = {
+  cache: {}, // { articleId: { avg, count } }
+
+  async loadBulk(ids) {
+    if (!ids.length) return;
+    try {
+      const data = await apiFetch('/ratings/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ ids })
+      });
+      Object.assign(this.cache, data);
+    } catch {}
+  },
+
+  // Dev mode: визуальная накрутка — только на экране, в БД не пишет
+  boost(articleId, container) {
+    if (!isDevMode) return;
+    this.cache[articleId] = {
+      avg: (4.5 + Math.random() * 0.5).toFixed(1) * 1,
+      count: Math.floor(50 + Math.random() * 500)
+    };
+    this.renderWidget(articleId, container);
+    toast('⚡ DEV: рейтинг накручен визуально!');
+  },
+
+  renderWidget(articleId, container) {
+    const r = this.cache[articleId] || { avg: 0, count: 0 };
+    const filled = Math.round(r.avg);
+    const stars = [1,2,3,4,5].map(i =>
+      `<span class="star ${i <= filled ? 'filled' : 'empty'}"
+        onclick="Ratings.rate(${articleId},${i},this.parentElement)"
+        ondblclick="Ratings.boost(${articleId},this.parentElement)"
+        title="${isDevMode ? '2x клик = DEV накрутка' : 'Оценить'}">★</span>`
+    ).join('');
+    container.innerHTML = stars +
+      (r.count
+        ? `<span class="rating-count">${Number(r.avg).toFixed(1)} (${r.count})</span>`
+        : `<span class="rating-count" style="font-size:.7rem">Оценить</span>`);
+  },
+
+  async rate(articleId, stars, container) {
+    if (isDevMode) {
+      // Dev: только визуально
+      this.cache[articleId] = {
+        avg: stars,
+        count: (this.cache[articleId]?.count || 0) + 1
+      };
+      this.renderWidget(articleId, container);
+      toast('⚡ DEV: визуальная оценка ' + '★'.repeat(stars));
+      return;
+    }
+    try {
+      const result = await apiFetch(`/ratings/${articleId}`, {
+        method: 'POST',
+        body: JSON.stringify({ stars })
+      });
+      this.cache[articleId] = result;
+      this.renderWidget(articleId, container);
+      toast('Оценка ' + '★'.repeat(stars) + ' сохранена!');
+    } catch {}
+  }
+};
+
 /* ═══════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════ */
 (async () => {
+  await checkDevMode();
   await loadSidebar();
   await loadArticles();
 })();
