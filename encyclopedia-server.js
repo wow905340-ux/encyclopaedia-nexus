@@ -615,7 +615,7 @@ async function migrate() {
 
 migrate()
   .then(() => {
-    app.listen(CONFIG.port, () => {
+    app.listen(CONFIG.port, '0.0.0.0', () => {
       console.log(`📚 Encyclopaedia NEXUS running on port ${CONFIG.port}`);
     });
   })
@@ -625,3 +625,4 @@ migrate()
   });
 
 module.exports = app;
+ 
