@@ -613,16 +613,14 @@ async function migrate() {
 
 // ─── START ─────────────────────────────────────────────────────────────────
 
-migrate()
-  .then(() => {
-    app.listen(CONFIG.port, '0.0.0.0', () => {
-      console.log(`📚 Encyclopaedia NEXUS running on port ${CONFIG.port}`);
-    });
-  })
-  .catch(e => {
-    console.error('❌ Migration failed:', e.message);
-    process.exit(1);
-  });
+// Сервер стартует СРАЗУ — не ждёт базу
+// Если база недоступна при старте — сайт всё равно поднимется
+app.listen(CONFIG.port, '0.0.0.0', () => {
+  console.log(`📚 Encyclopaedia NEXUS running on port ${CONFIG.port}`);
+  // Миграции запускаем в фоне после старта
+  migrate()
+    .then(() => console.log('✅ DB ready'))
+    .catch(e => console.error('⚠️ DB not ready yet:', e.message));
+});
 
 module.exports = app;
- 
