@@ -72,7 +72,7 @@ const crypto     = require('crypto');
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────
 const CONFIG = {
-  port: process.env.PORT || 3000,
+  port: process.env.PORT || 8080,
   db: {
     host:     process.env.MYSQLHOST     || process.env.DB_HOST     || '127.0.0.1',
     port:     parseInt(process.env.MYSQLPORT || process.env.DB_PORT || '3306'),
