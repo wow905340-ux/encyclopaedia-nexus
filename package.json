@@ -7,7 +7,7 @@
   },
   "dependencies": {
     "express": "*",
-    "mariadb": "*",
+    "mariadb": "3.2.3",
     "multer": "*",
     "cors": "*",
     "helmet": "*",
