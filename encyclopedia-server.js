@@ -74,14 +74,15 @@ const crypto     = require('crypto');
 const CONFIG = {
   port: process.env.PORT || 8080,
   db: {
-    host:     process.env.MYSQLHOST     || process.env.DB_HOST     || '127.0.0.1',
-    port:     parseInt(process.env.MYSQLPORT || process.env.DB_PORT || '3306'),
-    user:     process.env.MYSQLUSER     || process.env.DB_USER     || 'root',
-    password: process.env.MYSQLPASSWORD || process.env.DB_PASS     || 'password',
-    database: process.env.MYSQLDATABASE || process.env.DB_NAME     || 'railway',
-    connectionLimit: 10,
-    acquireTimeout: 10000,
-    charset: 'utf8mb4',
+    host:            process.env.MYSQLPRIVATEHOST || process.env.MYSQLHOST || '127.0.0.1',
+    port:            parseInt(process.env.MYSQLPORT || '3306'),
+    user:            process.env.MYSQLUSER     || 'root',
+    password:        process.env.MYSQLPASSWORD || '',
+    database:        process.env.MYSQLDATABASE || 'railway',
+    connectionLimit: 5,
+    acquireTimeout:  60000,
+    connectTimeout:  60000,
+    charset:         'utf8mb4',
   },
   upload: {
     dir:      path.resolve('./uploads'),
