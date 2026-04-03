@@ -1,6 +1,6 @@
 /**
  * ENCYCLOPAEDIA NEXUS — Backend Server
- * Node.js + Express + Этот сервер такой:
+ * Node.js + Express + MariaDB
  * 
  * Setup:
  *   npm install express mariadb multer sharp cors helmet express-rate-limit
@@ -74,11 +74,11 @@ const crypto     = require('crypto');
 const CONFIG = {
   port: process.env.PORT || 3000,
   db: {
-    host:     process.env.DB_HOST     || '127.0.0.1',
-    port:     parseInt(process.env.DB_PORT || '3306'),
-    user:     process.env.DB_USER     || 'root',
-    password: process.env.DB_PASS     || 'password',
-    database: process.env.DB_NAME     || 'encyclopaedia',
+    host:     process.env.MYSQLHOST     || process.env.DB_HOST     || '127.0.0.1',
+    port:     parseInt(process.env.MYSQLPORT || process.env.DB_PORT || '3306'),
+    user:     process.env.MYSQLUSER     || process.env.DB_USER     || 'root',
+    password: process.env.MYSQLPASSWORD || process.env.DB_PASS     || 'password',
+    database: process.env.MYSQLDATABASE || process.env.DB_NAME     || 'railway',
     connectionLimit: 10,
     acquireTimeout: 10000,
     charset: 'utf8mb4',
@@ -530,10 +530,99 @@ app.get('/api/health', async (_, res) => {
   }
 });
 
+// ─── SERVE FRONTEND ────────────────────────────────────────────────────────
+// Railway не умеет отдавать статику сам — сервер делает это вместо него.
+// index.html должен лежать рядом с этим файлом в том же репо.
+
+app.use(express.static(path.resolve('./')));
+
+// Любой маршрут не из /api отдаёт index.html (SPA fallback)
+app.get('*', (req, res) => {
+  res.sendFile(path.resolve('./index.html'));
+});
+
+// ─── AUTO MIGRATE ──────────────────────────────────────────────────────────
+// При старте сервера автоматически создаёт все таблицы если их нет.
+// Руками в БД лезть не нужно.
+
+async function migrate() {
+  console.log('⚙️  Running migrations…');
+  await query(`
+    CREATE TABLE IF NOT EXISTS articles (
+      id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      slug         VARCHAR(220) NOT NULL UNIQUE,
+      title        VARCHAR(300) NOT NULL,
+      summary      TEXT,
+      cover_url    VARCHAR(500),
+      author       VARCHAR(150) DEFAULT 'Anonymous',
+      status       ENUM('draft','published','archived') DEFAULT 'draft',
+      views        INT UNSIGNED DEFAULT 0,
+      created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `);
+
+  // FULLTEXT добавляем отдельно — IF NOT EXISTS для индекса не поддерживается
+  try {
+    await query(`ALTER TABLE articles ADD FULLTEXT idx_ft (title, summary)`);
+  } catch (e) { /* уже существует — ок */ }
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS chunks (
+      id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      article_id   INT UNSIGNED NOT NULL,
+      position     SMALLINT UNSIGNED NOT NULL,
+      type         ENUM('text','heading','image','code','quote','table','divider') DEFAULT 'text',
+      content      MEDIUMTEXT,
+      meta         JSON,
+      FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE,
+      INDEX idx_article_pos (article_id, position)
+    ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS tags (
+      id    SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      name  VARCHAR(80) NOT NULL UNIQUE,
+      color VARCHAR(7) DEFAULT '#6366f1'
+    ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS article_tags (
+      article_id INT UNSIGNED NOT NULL,
+      tag_id     SMALLINT UNSIGNED NOT NULL,
+      PRIMARY KEY (article_id, tag_id),
+      FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE,
+      FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS media (
+      id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      filename    VARCHAR(260) NOT NULL,
+      mime        VARCHAR(80),
+      size_bytes  INT UNSIGNED,
+      url         VARCHAR(500),
+      uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `);
+
+  console.log('✅ Migrations done');
+}
+
 // ─── START ─────────────────────────────────────────────────────────────────
 
-app.listen(CONFIG.port, () => {
-  console.log(`📚 Encyclopaedia NEXUS backend running on port ${CONFIG.port}`);
-});
+migrate()
+  .then(() => {
+    app.listen(CONFIG.port, () => {
+      console.log(`📚 Encyclopaedia NEXUS running on port ${CONFIG.port}`);
+    });
+  })
+  .catch(e => {
+    console.error('❌ Migration failed:', e.message);
+    process.exit(1);
+  });
 
 module.exports = app;
