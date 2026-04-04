@@ -110,7 +110,7 @@ module.exports = function registerUserAIRoutes(app, pool, query) {
       const story = await callGemini(prompt, geminiKey);
       await publishStory(story, userId, username);
       await query(
-        'UPDATE user_ai_crons SET generated = generated + 1, last_title = ?, last_run_at = NOW() WHERE user_id = ?',
+        'UPDATE user_ai_crons SET `generated` = `generated` + 1, last_title = ?, last_run_at = NOW() WHERE user_id = ?',
         [story.title, userId]
       );
       console.log(`🤖 [${username}] published: ${story.title}`);
@@ -126,7 +126,7 @@ ${part === story.totalParts ? 'Финальная часть — дай дост
           const cont = await callGemini(contPrompt, geminiKey);
           await publishStory(cont, userId, username);
           await query(
-            'UPDATE user_ai_crons SET generated = generated + 1, last_title = ?, last_run_at = NOW() WHERE user_id = ?',
+            'UPDATE user_ai_crons SET `generated` = `generated` + 1, last_title = ?, last_run_at = NOW() WHERE user_id = ?',
             [cont.title, userId]
           );
         }
