@@ -110,7 +110,7 @@ module.exports = function registerUserAIRoutes(app, pool, query) {
       const story = await callGemini(prompt, geminiKey);
       await publishStory(story, userId, username);
       await query(
-        'UPDATE user_ai_crons SET `generated` = `generated` + 1, last_title = ?, last_run_at = NOW() WHERE user_id = ?',
+        'UPDATE user_ai_crons SET gen_count = gen_count + 1, last_title = ?, last_run_at = NOW() WHERE user_id = ?',
         [story.title, userId]
       );
       console.log(`🤖 [${username}] published: ${story.title}`);
@@ -126,7 +126,7 @@ ${part === story.totalParts ? 'Финальная часть — дай дост
           const cont = await callGemini(contPrompt, geminiKey);
           await publishStory(cont, userId, username);
           await query(
-            'UPDATE user_ai_crons SET `generated` = `generated` + 1, last_title = ?, last_run_at = NOW() WHERE user_id = ?',
+            'UPDATE user_ai_crons SET gen_count = gen_count + 1, last_title = ?, last_run_at = NOW() WHERE user_id = ?',
             [cont.title, userId]
           );
         }
@@ -221,7 +221,7 @@ ${part === story.totalParts ? 'Финальная часть — дай дост
       if (!users.length) return res.json({ active: false, generated: 0 });
       const userId = users[0].id;
       const rows = await query(
-        'SELECT active, interval_min, generated, last_title, last_run_at FROM user_ai_crons WHERE user_id = ?',
+        'SELECT active, interval_min, gen_count AS generated, last_title, last_run_at FROM user_ai_crons WHERE user_id = ?',
         [userId]
       );
       if (!rows.length) return res.json({ active: false, generated: 0 });
