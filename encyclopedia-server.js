@@ -81,7 +81,7 @@ const CONFIG = {
     database:        process.env.MYSQLDATABASE || 'railway',
     connectionLimit: 5,
     connectTimeout:  60000,
-    charset:         'utf8mb4',
+    // charset handled by collation in DB
   },
   upload: {
     dir:      path.resolve('./uploads'),
@@ -495,9 +495,9 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
 app.get('/api/stats', async (_, res) => {
   try {
-    const [aRows] = [await query('SELECT COUNT(*) AS total, SUM(views) AS views FROM articles WHERE status="published"')];
-    const [cRows] = [await query('SELECT COUNT(*) AS total FROM chunks')];
-    const [tRows] = [await query('SELECT COUNT(*) AS total FROM tags')];
+    const aRows = await query('SELECT COUNT(*) AS total, SUM(views) AS views FROM articles WHERE status="published"');
+    const cRows = await query('SELECT COUNT(*) AS total FROM chunks');
+    const tRows = await query('SELECT COUNT(*) AS total FROM tags');
     const a = aRows[0], c = cRows[0], t = tRows[0];
     res.json({
       articles: Number(a.total),
@@ -524,6 +524,26 @@ app.get('/api/health', async (_, res) => {
 
 // ─── RATINGS ───────────────────────────────────────────────────────────────
 
+// POST /api/ratings/bulk — MUST be before /:articleId to avoid route conflict
+app.post('/api/ratings/bulk', async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids?.length) return res.json({});
+    const placeholders = ids.map(() => '?').join(',');
+    const rows = await query(
+      `SELECT article_id, AVG(stars) AS avg, COUNT(*) AS count FROM ratings WHERE article_id IN (${placeholders}) GROUP BY article_id`,
+      ids
+    );
+    const result = {};
+    rows.forEach(r => {
+      result[r.article_id] = { avg: Math.round(parseFloat(r.avg) * 10) / 10, count: parseInt(r.count) };
+    });
+    res.json(result);
+  } catch (e) {
+    err(res, 500, 'DB error');
+  }
+});
+
 // GET /api/ratings/:articleId — get rating for article
 app.get('/api/ratings/:articleId', async (req, res) => {
   try {
@@ -549,7 +569,7 @@ app.post('/api/ratings/:articleId', async (req, res) => {
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
     await pool.query(
       'INSERT INTO ratings (article_id, ip, stars) VALUES (?,?,?) ON DUPLICATE KEY UPDATE stars=VALUES(stars)',
-      [articleId, ip, parseInt(stars)]
+      [articleId, ip, stars]
     );
     const rows = await query(
       'SELECT AVG(stars) AS avg, COUNT(*) AS count FROM ratings WHERE article_id = ?',
@@ -561,25 +581,6 @@ app.post('/api/ratings/:articleId', async (req, res) => {
   }
 });
 
-// GET /api/ratings/bulk — get ratings for multiple articles
-app.post('/api/ratings/bulk', async (req, res) => {
-  try {
-    const { ids } = req.body;
-    if (!ids?.length) return res.json({});
-    const placeholders = ids.map(() => '?').join(',');
-    const rows = await query(
-      `SELECT article_id, AVG(stars) AS avg, COUNT(*) AS count FROM ratings WHERE article_id IN (${placeholders}) GROUP BY article_id`,
-      ids
-    );
-    const result = {};
-    rows.forEach(r => {
-      result[r.article_id] = { avg: Math.round(parseFloat(r.avg) * 10) / 10, count: parseInt(r.count) };
-    });
-    res.json(result);
-  } catch (e) {
-    err(res, 500, 'DB error');
-  }
-});
 
 // ─── SERVE FRONTEND ────────────────────────────────────────────────────────
 // Railway не умеет отдавать статику сам — сервер делает это вместо него.
