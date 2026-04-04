@@ -69,6 +69,7 @@ const cors       = require('cors');
 const helmet     = require('helmet');
 const rateLimit  = require('express-rate-limit');
 const crypto     = require('crypto');
+const bcrypt     = require('bcryptjs');
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────
 const CONFIG = {
@@ -220,8 +221,12 @@ app.get('/api/articles/:slug', async (req, res) => {
     );
     if (!article) return err(res, 404, 'Not found');
 
-    // increment views async
-    query('UPDATE articles SET views = views + 1 WHERE id = ?', [article.id]).catch(() => {});
+    // increment views — track unique per IP
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+    pool.query(
+      'INSERT IGNORE INTO article_views (article_id, ip) SELECT ?,? FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM article_views WHERE article_id=? AND ip=? AND viewed_at > DATE_SUB(NOW(), INTERVAL 1 HOUR))',
+      [article.id, ip, article.id, ip]
+    ).then(() => pool.query('UPDATE articles SET views = (SELECT COUNT(*) FROM article_views WHERE article_id=?) WHERE id=?', [article.id, article.id])).catch(() => {});
 
     res.json(article);
   } catch (e) {
@@ -522,6 +527,99 @@ app.get('/api/health', async (_, res) => {
 });
 
 
+
+// ─── AUTH ──────────────────────────────────────────────────────────────────
+
+// POST /api/auth/register
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { username, password, device_id } = req.body;
+    if (!username?.trim() || !password || !device_id) return err(res, 400, 'Missing fields');
+    if (username.length < 2 || username.length > 30) return err(res, 400, 'Username 2-30 chars');
+    if (password.length < 4) return err(res, 400, 'Password min 4 chars');
+
+    // Check device already registered
+    const existing = await query('SELECT id, username FROM users WHERE device_id = ?', [device_id]);
+    if (existing.length) return err(res, 409, 'Device already registered as: ' + existing[0].username);
+
+    // Check username taken
+    const taken = await query('SELECT id FROM users WHERE username = ?', [username.trim()]);
+    if (taken.length) return err(res, 409, 'Username taken');
+
+    const hash = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      'INSERT INTO users (username, password, device_id) VALUES (?,?,?)',
+      [username.trim(), hash, device_id]
+    );
+    const userId = Number(result[0].insertId);
+    res.status(201).json({ id: userId, username: username.trim() });
+  } catch (e) {
+    console.error(e);
+    err(res, 500, 'DB error: ' + e.message);
+  }
+});
+
+// POST /api/auth/login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password, device_id } = req.body;
+    if (!username || !password || !device_id) return err(res, 400, 'Missing fields');
+
+    const users = await query('SELECT * FROM users WHERE username = ?', [username.trim()]);
+    if (!users.length) return err(res, 401, 'Wrong username or password');
+
+    const user = users[0];
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) return err(res, 401, 'Wrong username or password');
+
+    // Lock to device
+    if (user.device_id !== device_id) return err(res, 403, 'This account is locked to another device');
+
+    res.json({ id: user.id, username: user.username, avatar_color: user.avatar_color, interests: user.interests });
+  } catch (e) {
+    err(res, 500, 'DB error');
+  }
+});
+
+// GET /api/auth/device/:deviceId — check if device is registered
+app.get('/api/auth/device/:deviceId', async (req, res) => {
+  try {
+    const rows = await query('SELECT id, username, avatar_color, interests FROM users WHERE device_id = ?', [req.params.deviceId]);
+    if (!rows.length) return res.json({ registered: false });
+    res.json({ registered: true, user: rows[0] });
+  } catch (e) {
+    err(res, 500, 'DB error');
+  }
+});
+
+// PUT /api/auth/interests — save user interests
+app.put('/api/auth/interests', async (req, res) => {
+  try {
+    const { device_id, interests } = req.body;
+    await query('UPDATE users SET interests = ? WHERE device_id = ?', [JSON.stringify(interests), device_id]);
+    res.json({ ok: true });
+  } catch (e) {
+    err(res, 500, 'DB error');
+  }
+});
+
+// POST /api/push/subscribe — save push subscription
+app.post('/api/push/subscribe', async (req, res) => {
+  try {
+    const { device_id, endpoint, p256dh, auth } = req.body;
+    const users = await query('SELECT id FROM users WHERE device_id = ?', [device_id]);
+    if (!users.length) return err(res, 401, 'Not registered');
+    const userId = users[0].id;
+    await pool.query(
+      'INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE endpoint=VALUES(endpoint)',
+      [userId, endpoint, p256dh, auth]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    err(res, 500, 'DB error');
+  }
+});
+
 // ─── RATINGS ───────────────────────────────────────────────────────────────
 
 // POST /api/ratings/bulk — MUST be before /:articleId to avoid route conflict
@@ -668,6 +766,42 @@ async function migrate() {
       stars      TINYINT UNSIGNED NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE KEY uniq_ip_article (article_id, ip),
+      FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      username     VARCHAR(80) NOT NULL UNIQUE,
+      password     VARCHAR(255) NOT NULL,
+      device_id    VARCHAR(128) NOT NULL UNIQUE,
+      avatar_color VARCHAR(7) DEFAULT '#6366f1',
+      interests    JSON,
+      created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      user_id    INT UNSIGNED NOT NULL,
+      endpoint   TEXT NOT NULL,
+      p256dh     TEXT NOT NULL,
+      auth       TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS article_views (
+      id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      article_id INT UNSIGNED NOT NULL,
+      user_id    INT UNSIGNED,
+      ip         VARCHAR(64),
+      viewed_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_article (article_id),
       FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
     ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
   `);
