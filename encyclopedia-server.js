@@ -1031,7 +1031,7 @@ async function migrate() {
       gemini_key   VARCHAR(500) NOT NULL,
       interval_min SMALLINT UNSIGNED DEFAULT 60,
       active       TINYINT(1) DEFAULT 1,
-      `generated`  INT UNSIGNED DEFAULT 0,
+      gen_count    INT UNSIGNED DEFAULT 0,
       last_title   VARCHAR(300),
       last_run_at  DATETIME,
       created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
