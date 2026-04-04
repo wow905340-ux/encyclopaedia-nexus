@@ -691,6 +691,212 @@ app.post('/api/ratings/:articleId', async (req, res) => {
 });
 
 
+
+// ─── GEMINI STORY GENERATOR (SERVER-SIDE CRON) ─────────────────────────────
+
+// POST /api/gemini/key — save Gemini key (only from dev IP)
+app.post('/api/gemini/key', async (req, res) => {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || '';
+  const { key, interval_minutes } = req.body;
+  if (!key) return err(res, 400, 'No key');
+  GeminiCron.apiKey = key;
+  GeminiCron.intervalMs = (interval_minutes || 4) * 60 * 1000;
+  GeminiCron.start();
+  res.json({ ok: true, interval: GeminiCron.intervalMs / 60000 + ' min' });
+});
+
+// POST /api/gemini/stop — stop cron
+app.post('/api/gemini/stop', (req, res) => {
+  GeminiCron.stop();
+  res.json({ ok: true });
+});
+
+// GET /api/gemini/status
+app.get('/api/gemini/status', (req, res) => {
+  res.json({
+    running: !!GeminiCron.timer,
+    interval_min: GeminiCron.intervalMs / 60000,
+    generated: GeminiCron.count,
+    last: GeminiCron.lastTitle
+  });
+});
+
+const GENRES = [
+  'фэнтези с магией и древними пророчествами',
+  'постапокалипсис где выжившие строят новый мир',
+  'детектив в викторианском городе с паровыми машинами',
+  'космическая опера про экипаж старого грузового корабля',
+  'мистика в маленьком городке где пропадают люди',
+  'приключения путешественника во времени',
+  'киберпанк где ИИ получил сознание',
+  'история о последнем маге в мире без магии',
+  'морское приключение с пиратами и затопленными городами',
+  'романтическая история в антиутопическом государстве',
+];
+
+const GeminiCron = {
+  timer: null,
+  apiKey: '',
+  intervalMs: 4 * 60 * 1000, // 4 min default
+  count: 0,
+  lastTitle: '',
+
+  start() {
+    if (this.timer) clearInterval(this.timer);
+    console.log('🤖 Gemini Cron started, interval:', this.intervalMs / 60000, 'min');
+    this.generate(); // immediately first
+    this.timer = setInterval(() => this.generate(), this.intervalMs);
+  },
+
+  stop() {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = null;
+    console.log('🤖 Gemini Cron stopped');
+  },
+
+  async generate() {
+    if (!this.apiKey) return;
+    const genre = GENRES[Math.floor(Math.random() * GENRES.length)];
+    console.log('🤖 Gemini generating story, genre:', genre);
+
+    const SYSTEM = `Ты — талантливый автор захватывающих историй.
+Напиши историю на русском языке в жанре: ${genre}
+
+ТРЕБОВАНИЯ:
+- Минимум 900 слов (5+ минут чтения)
+- Живые персонажи с характером и мотивацией
+- Неожиданные повороты сюжета
+- Атмосферные описания мира
+- Сам реши нужны ли продолжения (2-3 части) — если история большая, раздели на части
+- Только художественный вымысел
+
+ФОРМАТ (строго JSON без markdown):
+{
+  "title": "Название истории",
+  "summary": "Одно предложение о чём история",
+  "tags": ["${genre.split(' ')[0]}", "история", "AI-история"],
+  "content": "Полный текст минимум 900 слов с абзацами разделёнными двойным переносом строки",
+  "hasContinuation": false,
+  "totalParts": 1
+}`;
+
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${this.apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: SYSTEM }] }],
+            generationConfig: { temperature: 0.95, maxOutputTokens: 8192 }
+          })
+        }
+      );
+
+      if (!res.ok) {
+        const e = await res.json();
+        console.error('🤖 Gemini API error:', e.error?.message);
+        return;
+      }
+
+      const data = await res.json();
+      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const clean = raw.replace(/```json|```/g, '').trim();
+      const story = JSON.parse(clean);
+
+      await this.publishStory(story, 1);
+      this.count++;
+      this.lastTitle = story.title;
+      console.log('🤖 Published:', story.title);
+
+      // Auto-generate continuations
+      if (story.hasContinuation && story.totalParts > 1) {
+        for (let part = 2; part <= Math.min(story.totalParts, 3); part++) {
+          await new Promise(r => setTimeout(r, 5000));
+          await this.generateContinuation(story.title, part, story.totalParts, genre);
+        }
+      }
+    } catch (e) {
+      console.error('🤖 Gemini error:', e.message);
+    }
+  },
+
+  async generateContinuation(title, part, total, genre) {
+    console.log(`🤖 Generating part ${part}/${total} of "${title}"`);
+    const prompt = `Напиши часть ${part} из ${total} истории "${title}" в жанре ${genre}.
+Продолжи сюжет, сохрани персонажей. Минимум 900 слов.
+${part === total ? 'Финальная часть — дай достойную развязку.' : 'Заверши на интригующей ноте.'}
+
+ФОРМАТ (строго JSON):
+{
+  "title": "${title} — Часть ${part}",
+  "summary": "Краткое описание этой части",
+  "tags": ["продолжение", "AI-история"],
+  "content": "Текст минимум 900 слов",
+  "hasContinuation": ${part < total},
+  "totalParts": ${total}
+}`;
+
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${this.apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.9, maxOutputTokens: 8192 }
+          })
+        }
+      );
+      const data = await res.json();
+      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const story = JSON.parse(raw.replace(/```json|```/g, '').trim());
+      await this.publishStory(story, part);
+      console.log(`🤖 Part ${part} published`);
+    } catch (e) {
+      console.error(`🤖 Part ${part} error:`, e.message);
+    }
+  },
+
+  async publishStory(story, part) {
+    // slugify title
+    const slug_base = story.title.toLowerCase()
+      .replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').slice(0, 180) + '-' + Date.now();
+
+    const paragraphs = story.content.split(/\n\n+/).filter(p => p.trim());
+    const chunks = paragraphs.map(p => ({ type: 'text', content: p.trim() }));
+
+    // Use internal query directly
+    const insertResult = await pool.query(
+      `INSERT INTO articles (slug, title, summary, author, status) VALUES (?,?,?,?,'published')`,
+      [slug_base, story.title, story.summary || '', '🤖 Gemini AI']
+    );
+    const articleId = Number(insertResult[0].insertId);
+
+    // Insert tags
+    const tags = [...(story.tags || []), 'AI-история'];
+    for (const tagName of tags.slice(0, 10)) {
+      const name = String(tagName).slice(0, 80).trim();
+      if (!name) continue;
+      let [tag] = await query('SELECT id FROM tags WHERE name = ?', [name]);
+      if (!tag) {
+        const [r] = await pool.query('INSERT INTO tags (name) VALUES (?)', [name]);
+        tag = { id: Number(r.insertId) };
+      }
+      await query('INSERT IGNORE INTO article_tags VALUES (?,?)', [articleId, tag.id]);
+    }
+
+    // Insert chunks
+    for (let i = 0; i < chunks.length; i++) {
+      await query(
+        'INSERT INTO chunks (article_id, position, type, content, meta) VALUES (?,?,?,?,?)',
+        [articleId, i, 'text', chunks[i].content, null]
+      );
+    }
+  }
+};
+
 // ─── SERVE FRONTEND ────────────────────────────────────────────────────────
 // Railway не умеет отдавать статику сам — сервер делает это вместо него.
 
