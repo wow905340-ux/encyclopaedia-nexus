@@ -82,6 +82,7 @@ const CONFIG = {
     database:        process.env.MYSQLDATABASE || 'railway',
     connectionLimit: 5,
     connectTimeout:  60000,
+    ssl:             process.env.MYSQLHOST?.includes('tidbcloud') ? { rejectUnauthorized: true } : false,
     // charset handled by collation in DB
   },
   upload: {
