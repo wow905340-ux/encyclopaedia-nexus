@@ -1490,12 +1490,17 @@ const Gemini = {
    INIT
 ═══════════════════════════════════════════════════════ */
 (async () => {
-  // ★ Сначала проверяем дев через СЕРВЕР — не через ipify
   await checkDevMode();
   await Profile.init();
   await loadSidebar();
   await loadArticles();
+  // user-ai.js инициализируется после Profile.init() чтобы знать currentUser
+  if (typeof initUserAI === 'function') await initUserAI();
 })();
 </script>
+
+<!-- ★ USER AI ГЕНЕРАТОР — отдельный модуль, удалить через ~день если не нужен -->
+<script src="user-ai.js"></script>
+
 </body>
 </html>
