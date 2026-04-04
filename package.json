@@ -11,7 +11,8 @@
     "cors": "*",
     "helmet": "*",
     "express-rate-limit": "*",
-    "mysql2": "*"
+    "mysql2": "*",
+    "bcryptjs": "*"
   },
   "type": "commonjs"
 }
