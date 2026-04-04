@@ -221,12 +221,20 @@ app.get('/api/articles/:slug', async (req, res) => {
     );
     if (!article) return err(res, 404, 'Not found');
 
-    // increment views — track unique per IP
+    // increment views — track unique per IP (once per hour)
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
-    pool.query(
-      'INSERT IGNORE INTO article_views (article_id, ip) SELECT ?,? FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM article_views WHERE article_id=? AND ip=? AND viewed_at > DATE_SUB(NOW(), INTERVAL 1 HOUR))',
-      [article.id, ip, article.id, ip]
-    ).then(() => pool.query('UPDATE articles SET views = (SELECT COUNT(*) FROM article_views WHERE article_id=?) WHERE id=?', [article.id, article.id])).catch(() => {});
+    (async () => {
+      try {
+        const recent = await query(
+          'SELECT id FROM article_views WHERE article_id=? AND ip=? AND viewed_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)',
+          [article.id, ip]
+        );
+        if (!recent.length) {
+          await pool.query('INSERT INTO article_views (article_id, ip) VALUES (?,?)', [article.id, ip]);
+          await pool.query('UPDATE articles SET views = views + 1 WHERE id = ?', [article.id]);
+        }
+      } catch {}
+    })();
 
     res.json(article);
   } catch (e) {
