@@ -28,19 +28,15 @@
   --r:         6px;
   --shadow:    0 2px 12px rgba(13,13,15,.08);
   --shadow-lg: 0 8px 40px rgba(13,13,15,.14);
+
+  /* DEV mode palette */
+  --dev-green: #4ade80;
+  --dev-bg:    #0a1a0f;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 html { scroll-behavior: smooth; }
-
-body {
-  font-family: var(--serif);
-  background: var(--paper);
-  color: var(--ink);
-  line-height: 1.7;
-  min-height: 100vh;
-}
+body { font-family: var(--serif); background: var(--paper); color: var(--ink); line-height: 1.7; min-height: 100vh; }
 
 /* ═══════════════════════════════════════════════════════
    LAYOUT
@@ -56,7 +52,10 @@ header {
   top: 0;
   z-index: 100;
   border-bottom: 3px solid var(--gold);
+  transition: border-color .3s;
 }
+/* DEV mode header accent */
+body.dev-mode header { border-bottom-color: var(--dev-green); }
 
 .header-inner {
   max-width: 1300px;
@@ -76,14 +75,12 @@ header {
   cursor: pointer;
   white-space: nowrap;
   user-select: none;
+  transition: color .2s;
 }
+body.dev-mode .logo { color: var(--dev-green); }
 .logo span { color: var(--paper); font-weight: 400; font-size: .8em; letter-spacing: .12em; display: block; }
 
-.search-wrap {
-  flex: 1;
-  max-width: 520px;
-  position: relative;
-}
+.search-wrap { flex: 1; max-width: 520px; position: relative; }
 .search-wrap input {
   width: 100%;
   background: rgba(255,255,255,.08);
@@ -98,12 +95,9 @@ header {
 }
 .search-wrap input::placeholder { color: rgba(245,240,232,.45); }
 .search-wrap input:focus { border-color: var(--gold-lt); background: rgba(255,255,255,.13); }
-.search-icon {
-  position: absolute; right: .8rem; top: 50%; transform: translateY(-50%);
-  color: rgba(245,240,232,.5); pointer-events: none; font-size: .95rem;
-}
+.search-icon { position: absolute; right: .8rem; top: 50%; transform: translateY(-50%); color: rgba(245,240,232,.5); pointer-events: none; font-size: .95rem; }
 
-.header-actions { display: flex; gap: .6rem; margin-left: auto; }
+.header-actions { display: flex; gap: .6rem; margin-left: auto; align-items: center; }
 .btn {
   display: inline-flex; align-items: center; gap: .4rem;
   padding: .48rem 1.1rem;
@@ -120,13 +114,14 @@ header {
 .btn-sm { padding: .35rem .8rem; font-size: .82rem; }
 .btn-danger { background: #c0392b; color: #fff; }
 .btn-danger:hover { background: #a93226; }
+.btn-dev { background: rgba(74,222,128,.15); color: var(--dev-green); border: 1px solid rgba(74,222,128,.4); }
+.btn-dev:hover { background: rgba(74,222,128,.25); }
 
 /* ─── MAIN ─── */
 main { flex: 1; max-width: 1300px; margin: 0 auto; padding: 2rem; width: 100%; }
 
 /* ─── SIDEBAR + CONTENT ─── */
 .layout { display: grid; grid-template-columns: 230px 1fr; gap: 2rem; align-items: start; }
-
 @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
 
 /* ─── SIDEBAR ─── */
@@ -138,14 +133,7 @@ aside {
   position: sticky;
   top: 82px;
 }
-aside h3 {
-  font-family: var(--mono);
-  font-size: .72rem;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: .8rem;
-}
+aside h3 { font-family: var(--mono); font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: .8rem; }
 .tag-cloud { display: flex; flex-wrap: wrap; gap: .4rem; }
 .tag-pill {
   padding: .28rem .7rem;
@@ -154,7 +142,7 @@ aside h3 {
   font-family: var(--mono);
   cursor: pointer;
   border: 1px solid transparent;
-  transition: opacity .15s, transform .15s;
+  transition: opacity .15s, transform .15s, box-shadow .15s;
   font-weight: 600;
 }
 .tag-pill:hover { opacity: .85; transform: translateY(-1px); }
@@ -164,17 +152,10 @@ aside h3 {
 .stat-row { display: flex; justify-content: space-between; font-size: .83rem; padding: .3rem 0; border-bottom: 1px solid var(--cream); color: var(--muted); }
 .stat-row strong { color: var(--ink); font-family: var(--mono); }
 
-/* ─── CONTENT AREA ─── */
-.content-area {}
-
 /* ─── TOOLBAR ─── */
 .toolbar { display: flex; align-items: center; gap: .8rem; margin-bottom: 1.4rem; flex-wrap: wrap; }
 .toolbar-title { font-family: var(--display); font-size: 1.5rem; font-weight: 700; flex: 1; }
-.sort-select {
-  background: var(--card-bg); border: 1px solid var(--border);
-  border-radius: var(--r); padding: .4rem .8rem;
-  font-family: var(--serif); font-size: .85rem; color: var(--ink); cursor: pointer;
-}
+.sort-select { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--r); padding: .4rem .8rem; font-family: var(--serif); font-size: .85rem; color: var(--ink); cursor: pointer; }
 
 /* ─── ARTICLE GRID ─── */
 .article-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.3rem; }
@@ -187,27 +168,35 @@ aside h3 {
   cursor: pointer;
   transition: box-shadow .2s, transform .2s;
   display: flex; flex-direction: column;
+  position: relative;
 }
 .article-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
 
-.card-cover {
-  width: 100%; height: 160px;
-  object-fit: cover; display: block;
-  background: linear-gradient(135deg, var(--cream) 0%, var(--border) 100%);
+/* DEV: карточки можно удалять */
+.dev-delete-btn {
+  position: absolute; top: .5rem; right: .5rem; z-index: 10;
+  background: rgba(192,57,43,.9); color: #fff;
+  border: none; border-radius: 4px; padding: .25rem .55rem;
+  font-size: .72rem; font-family: var(--mono); cursor: pointer;
+  display: none; transition: background .15s;
 }
+body.dev-mode .dev-delete-btn { display: block; }
+.dev-delete-btn:hover { background: #a93226; }
+
+.card-cover { width: 100%; height: 160px; object-fit: cover; display: block; }
 .card-cover-placeholder {
   width: 100%; height: 160px;
   background: linear-gradient(135deg, #e8e2d8 0%, #d4cec4 100%);
   display: flex; align-items: center; justify-content: center;
   font-size: 2.5rem; color: var(--border);
 }
-
-.card-body { padding: 1rem 1.1rem; flex: 1; display: flex; flex-direction: column; gap: .5rem; }
+.card-body { padding: 1rem 1.1rem; flex: 1; display: flex; flex-direction: column; gap: .4rem; }
 .card-title { font-family: var(--display); font-size: 1.05rem; font-weight: 700; line-height: 1.3; }
 .card-summary { font-size: .85rem; color: var(--muted); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .card-tags { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: auto; padding-top: .4rem; }
-.card-tag { padding: .2rem .55rem; border-radius: 12px; font-size: .72rem; font-family: var(--mono); font-weight: 600; }
-.card-meta { font-size: .75rem; color: var(--muted); font-family: var(--mono); display: flex; gap: .8rem; }
+.card-tag { padding: .2rem .55rem; border-radius: 12px; font-size: .72rem; font-family: var(--mono); font-weight: 600; transition: transform .15s; }
+.card-tag:hover { transform: scale(1.05); }
+.card-meta { font-size: .75rem; color: var(--muted); font-family: var(--mono); display: flex; gap: .8rem; flex-wrap: wrap; }
 
 /* ─── PAGINATION ─── */
 .pagination { display: flex; gap: .4rem; align-items: center; justify-content: center; margin-top: 2rem; }
@@ -218,7 +207,7 @@ aside h3 {
   display: flex; align-items: center; justify-content: center;
   transition: all .15s; color: var(--ink);
 }
-.page-btn:hover { background: var(--gold); border-color: var(--gold); color: var(--ink); }
+.page-btn:hover { background: var(--gold); border-color: var(--gold); }
 .page-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .page-btn:disabled { opacity: .4; cursor: default; }
 
@@ -235,13 +224,12 @@ aside h3 {
 .search-info { flex: 1; }
 .search-title { font-family: var(--display); font-weight: 700; font-size: 1rem; }
 .search-summary { font-size: .83rem; color: var(--muted); }
-mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; padding: 0 2px; }
+mark { background: rgba(184,134,11,.28); color: inherit; border-radius: 2px; padding: 0 2px; font-weight: 600; }
 
 /* ═══════════════════════════════════════════════════════
    ARTICLE VIEW
 ═══════════════════════════════════════════════════════ */
 .article-view { max-width: 760px; margin: 0 auto; }
-
 .article-header { margin-bottom: 2rem; }
 .article-header .back-btn {
   font-family: var(--mono); font-size: .78rem; color: var(--muted);
@@ -256,9 +244,17 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
 .article-summary { font-size: 1.1rem; color: var(--muted); border-left: 3px solid var(--gold); padding-left: 1rem; margin-bottom: 1.5rem; font-style: italic; }
 .article-tag-row { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 2rem; }
 
+/* Article reading progress bar */
+.reading-progress {
+  position: fixed; top: 65px; left: 0; right: 0; height: 3px;
+  background: rgba(255,255,255,.1); z-index: 99;
+  display: none;
+}
+.reading-progress-bar { height: 100%; background: var(--gold); width: 0%; transition: width .1s; }
+body.dev-mode .reading-progress-bar { background: var(--dev-green); }
+
 /* ─── CHUNK RENDERER ─── */
 .chunk-container { display: flex; flex-direction: column; gap: .8rem; }
-
 .chunk { line-height: 1.8; }
 .chunk-text { font-size: 1.05rem; }
 .chunk-h2 { font-family: var(--display); font-size: 1.7rem; font-weight: 700; margin-top: 1.2rem; padding-bottom: .4rem; border-bottom: 1px solid var(--border); }
@@ -266,143 +262,73 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
 .chunk-img { width: 100%; border-radius: var(--r); }
 .chunk-img-wrap { text-align: center; }
 .chunk-img-caption { font-size: .82rem; color: var(--muted); font-style: italic; margin-top: .4rem; font-family: var(--mono); }
-.chunk-code {
-  background: var(--ink); color: #e8e2d8;
-  padding: 1.1rem 1.3rem; border-radius: var(--r);
-  font-family: var(--mono); font-size: .88rem; line-height: 1.6;
-  overflow-x: auto; white-space: pre;
-}
-.chunk-quote {
-  border-left: 4px solid var(--gold);
-  padding: .8rem 1.2rem;
-  background: rgba(184,134,11,.06);
-  border-radius: 0 var(--r) var(--r) 0;
-  font-style: italic; color: var(--muted); font-size: 1.05rem;
-}
+.chunk-code { background: var(--ink); color: #e8e2d8; padding: 1.1rem 1.3rem; border-radius: var(--r); font-family: var(--mono); font-size: .88rem; line-height: 1.6; overflow-x: auto; white-space: pre; }
+.chunk-quote { border-left: 4px solid var(--gold); padding: .8rem 1.2rem; background: rgba(184,134,11,.06); border-radius: 0 var(--r) var(--r) 0; font-style: italic; color: var(--muted); font-size: 1.05rem; }
 .chunk-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .chunk-table th { background: var(--ink); color: var(--paper); padding: .5rem .8rem; text-align: left; font-family: var(--mono); font-size: .8rem; }
 .chunk-table td { padding: .45rem .8rem; border-bottom: 1px solid var(--cream); }
 .chunk-table tr:hover td { background: var(--cream); }
 .chunk-divider { border: none; border-top: 2px solid var(--border); margin: 1rem 0; }
 
-.load-more-btn {
-  width: 100%; margin-top: 1.2rem;
-  background: var(--cream); border: 1px solid var(--border);
-  border-radius: var(--r); padding: .7rem;
-  font-family: var(--mono); font-size: .85rem; cursor: pointer;
-  transition: background .15s;
-}
+.load-more-btn { width: 100%; margin-top: 1.2rem; background: var(--cream); border: 1px solid var(--border); border-radius: var(--r); padding: .7rem; font-family: var(--mono); font-size: .85rem; cursor: pointer; transition: background .15s; }
 .load-more-btn:hover { background: var(--border); }
+
+/* ─── ARTICLE RATING SECTION ─── */
+.article-rating-section {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+.article-rating-section h4 { font-family: var(--mono); font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: .8rem; }
+.stars-large .star { font-size: 1.8rem; }
 
 /* ═══════════════════════════════════════════════════════
    EDITOR / CREATE
 ═══════════════════════════════════════════════════════ */
-.editor-modal {
-  position: fixed; inset: 0; z-index: 200;
-  background: rgba(13,13,15,.7); backdrop-filter: blur(4px);
-  display: flex; align-items: flex-start; justify-content: center;
-  padding: 1.5rem; overflow-y: auto;
-}
-.editor-panel {
-  background: var(--paper);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  width: 100%; max-width: 860px;
-  padding: 2rem;
-  box-shadow: var(--shadow-lg);
-  animation: slideUp .25s ease;
-}
+.editor-modal { position: fixed; inset: 0; z-index: 200; background: rgba(13,13,15,.7); backdrop-filter: blur(4px); display: flex; align-items: flex-start; justify-content: center; padding: 1.5rem; overflow-y: auto; }
+.editor-panel { background: var(--paper); border: 1px solid var(--border); border-radius: 10px; width: 100%; max-width: 860px; padding: 2rem; box-shadow: var(--shadow-lg); animation: slideUp .25s ease; }
 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } }
-
 .editor-title { font-family: var(--display); font-size: 1.5rem; font-weight: 900; margin-bottom: 1.4rem; }
 
 .field { margin-bottom: 1.1rem; }
 .field label { display: block; font-family: var(--mono); font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: .35rem; }
-.field input, .field textarea, .field select {
-  width: 100%;
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: .55rem .9rem;
-  font-family: var(--serif); font-size: .95rem; color: var(--ink);
-  outline: none; transition: border-color .18s;
-  resize: vertical;
-}
+.field input, .field textarea, .field select { width: 100%; background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--r); padding: .55rem .9rem; font-family: var(--serif); font-size: .95rem; color: var(--ink); outline: none; transition: border-color .18s; resize: vertical; }
 .field input:focus, .field textarea:focus { border-color: var(--gold); }
 .field textarea { min-height: 90px; }
-
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 
 /* chunk editor */
 .chunk-editor { border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
-.chunk-editor-toolbar {
-  background: var(--cream); border-bottom: 1px solid var(--border);
-  padding: .5rem .8rem; display: flex; flex-wrap: wrap; gap: .4rem;
-}
-.chunk-type-btn {
-  padding: .28rem .65rem; border-radius: 4px; border: 1px solid var(--border);
-  background: var(--card-bg); font-family: var(--mono); font-size: .75rem;
-  cursor: pointer; transition: all .15s; color: var(--ink);
-}
+.chunk-editor-toolbar { background: var(--cream); border-bottom: 1px solid var(--border); padding: .5rem .8rem; display: flex; flex-wrap: wrap; gap: .4rem; }
+.chunk-type-btn { padding: .28rem .65rem; border-radius: 4px; border: 1px solid var(--border); background: var(--card-bg); font-family: var(--mono); font-size: .75rem; cursor: pointer; transition: all .15s; color: var(--ink); }
 .chunk-type-btn:hover, .chunk-type-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 
 .chunks-list { max-height: 400px; overflow-y: auto; padding: .6rem; display: flex; flex-direction: column; gap: .5rem; }
-.chunk-item {
-  background: var(--card-bg); border: 1px solid var(--border);
-  border-radius: 4px; padding: .6rem .8rem;
-  display: flex; align-items: flex-start; gap: .5rem;
-}
-.chunk-item-type {
-  font-family: var(--mono); font-size: .7rem; color: var(--muted);
-  flex-shrink: 0; padding-top: .2rem; width: 52px;
-  text-transform: uppercase; letter-spacing: .05em;
-}
+.chunk-item { background: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; padding: .6rem .8rem; display: flex; align-items: flex-start; gap: .5rem; }
+.chunk-item-type { font-family: var(--mono); font-size: .7rem; color: var(--muted); flex-shrink: 0; padding-top: .2rem; width: 52px; text-transform: uppercase; letter-spacing: .05em; }
 .chunk-item-content { flex: 1; font-size: .88rem; word-break: break-word; white-space: pre-wrap; max-height: 80px; overflow: hidden; }
-.chunk-item-del {
-  color: var(--muted); font-size: .85rem; cursor: pointer;
-  border: none; background: none; padding: 2px 5px;
-  transition: color .15s; flex-shrink: 0;
-}
+.chunk-item-del { color: var(--muted); font-size: .85rem; cursor: pointer; border: none; background: none; padding: 2px 5px; transition: color .15s; flex-shrink: 0; }
 .chunk-item-del:hover { color: var(--rust); }
 
 .chunk-input-area { padding: .8rem; border-top: 1px solid var(--cream); background: var(--paper); }
-.chunk-input-area textarea {
-  width: 100%; min-height: 72px; resize: vertical;
-  background: var(--card-bg); border: 1px solid var(--border);
-  border-radius: 4px; padding: .5rem .7rem;
-  font-family: var(--mono); font-size: .85rem; outline: none;
-}
+.chunk-input-area textarea { width: 100%; min-height: 72px; resize: vertical; background: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; padding: .5rem .7rem; font-family: var(--mono); font-size: .85rem; outline: none; }
 .chunk-input-area textarea:focus { border-color: var(--gold); }
 .chunk-input-row { display: flex; gap: .5rem; margin-top: .5rem; align-items: center; }
-.chunk-type-select {
-  background: var(--card-bg); border: 1px solid var(--border);
-  border-radius: 4px; padding: .4rem .6rem;
-  font-family: var(--mono); font-size: .8rem; color: var(--ink);
-}
+.chunk-type-select { background: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; padding: .4rem .6rem; font-family: var(--mono); font-size: .8rem; color: var(--ink); }
 
 /* tag input */
 .tags-input-wrap { display: flex; flex-wrap: wrap; gap: .3rem; padding: .4rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--r); cursor: text; }
 .tags-input-wrap input { border: none; outline: none; background: none; font-family: var(--serif); font-size: .9rem; flex: 1; min-width: 120px; }
-.tag-badge {
-  display: inline-flex; align-items: center; gap: .3rem;
-  padding: .2rem .6rem; border-radius: 12px;
-  font-family: var(--mono); font-size: .75rem; font-weight: 600;
-  color: #fff; background: var(--gold);
-}
+.tag-badge { display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .6rem; border-radius: 12px; font-family: var(--mono); font-size: .75rem; font-weight: 600; color: #fff; background: var(--gold); }
 .tag-badge-x { cursor: pointer; opacity: .7; }
 .tag-badge-x:hover { opacity: 1; }
 
 /* upload area */
-.upload-area {
-  border: 2px dashed var(--border); border-radius: var(--r);
-  padding: 1.5rem; text-align: center; cursor: pointer;
-  transition: border-color .18s, background .18s;
-  background: var(--card-bg);
-}
+.upload-area { border: 2px dashed var(--border); border-radius: var(--r); padding: 1.5rem; text-align: center; cursor: pointer; transition: border-color .18s, background .18s; background: var(--card-bg); }
 .upload-area:hover, .upload-area.drag { border-color: var(--gold); background: rgba(184,134,11,.04); }
 .upload-area img { max-width: 100%; max-height: 180px; object-fit: cover; border-radius: 4px; margin-top: .6rem; }
 .upload-area p { color: var(--muted); font-size: .88rem; }
-
 .editor-actions { display: flex; justify-content: flex-end; gap: .7rem; margin-top: 1.4rem; padding-top: 1rem; border-top: 1px solid var(--border); }
 
 /* ═══════════════════════════════════════════════════════
@@ -411,151 +337,88 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
 .empty-state { text-align: center; padding: 4rem 2rem; color: var(--muted); }
 .empty-state .icon { font-size: 3rem; margin-bottom: .8rem; }
 .empty-state p { font-size: 1rem; }
-
-.spinner {
-  width: 28px; height: 28px; border: 3px solid var(--cream);
-  border-top-color: var(--gold); border-radius: 50%;
-  animation: spin .7s linear infinite; margin: 2rem auto;
-}
+.spinner { width: 28px; height: 28px; border: 3px solid var(--cream); border-top-color: var(--gold); border-radius: 50%; animation: spin .7s linear infinite; margin: 2rem auto; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.toast {
-  position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 999;
-  background: var(--ink); color: var(--paper); padding: .75rem 1.3rem;
-  border-radius: var(--r); font-size: .88rem; font-family: var(--mono);
-  box-shadow: var(--shadow-lg); transform: translateY(0);
-  animation: toastIn .25s ease;
-  border-left: 3px solid var(--gold);
-}
+.toast { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 999; background: var(--ink); color: var(--paper); padding: .75rem 1.3rem; border-radius: var(--r); font-size: .88rem; font-family: var(--mono); box-shadow: var(--shadow-lg); animation: toastIn .25s ease; border-left: 3px solid var(--gold); }
 .toast.error { border-left-color: var(--rust); }
+.toast.dev { border-left-color: var(--dev-green); }
 @keyframes toastIn { from { transform: translateY(12px); opacity: 0; } }
 
-/* ─── DECORATIVE HEADER RULE ─── */
-.section-rule {
-  display: flex; align-items: center; gap: 1rem; margin-bottom: 1.4rem;
-}
-.section-rule::before, .section-rule::after {
-  content: ''; flex: 1; height: 1px; background: var(--border);
-}
-.section-rule-text {
-  font-family: var(--mono); font-size: .7rem; letter-spacing: .15em;
-  text-transform: uppercase; color: var(--muted);
-}
-
+.section-rule { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.4rem; }
+.section-rule::before, .section-rule::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.section-rule-text { font-family: var(--mono); font-size: .7rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); }
 
 /* ═══ STARS ═══ */
 .stars { display:flex; gap:2px; align-items:center; }
-.star { font-size:1rem; cursor:pointer; transition:transform .15s; user-select:none; }
+.star { font-size:1rem; cursor:pointer; transition:transform .15s; user-select:none; line-height:1; }
 .star:hover { transform:scale(1.25); }
 .star.filled { color:#f0c040; }
 .star.empty { color:#c8c0b0; }
 .rating-count { font-family:var(--mono); font-size:.75rem; color:var(--muted); margin-left:.4rem; }
 
-/* ═══ DEV MODE ═══ */
+/* ═══ DEV MODE BADGE ═══ */
 .devmode-badge {
-  position:fixed; bottom:1rem; left:1rem; z-index:500;
-  background:var(--ink); color:#4ade80;
-  font-family:var(--mono); font-size:.72rem;
-  padding:.4rem .8rem; border-radius:4px;
-  border:1px solid #4ade80;
-  pointer-events:none;
+  position: fixed; bottom: 1rem; left: 1rem; z-index: 500;
+  background: var(--dev-bg); color: var(--dev-green);
+  font-family: var(--mono); font-size: .72rem;
+  padding: .4rem .9rem; border-radius: 4px;
+  border: 1px solid rgba(74,222,128,.4);
+  pointer-events: none;
+  display: flex; align-items: center; gap: .5rem;
 }
+.devmode-badge::before {
+  content: ''; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--dev-green);
+  animation: devPulse 1.5s ease-in-out infinite;
+}
+@keyframes devPulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
+/* DEV: инфо-бар под хедером */
+.dev-infobar {
+  background: var(--dev-bg);
+  border-bottom: 1px solid rgba(74,222,128,.3);
+  padding: .25rem 2rem;
+  font-family: var(--mono); font-size: .72rem; color: rgba(74,222,128,.7);
+  text-align: center;
+  display: none;
+}
+body.dev-mode .dev-infobar { display: block; }
 
 /* ═══ PROFILE / AUTH ═══ */
-.auth-modal {
-  position: fixed; inset: 0; z-index: 300;
-  background: rgba(13,13,15,.8); backdrop-filter: blur(6px);
-  display: flex; align-items: center; justify-content: center; padding: 1rem;
-}
-.auth-panel {
-  background: var(--paper); border: 1px solid var(--border);
-  border-radius: 10px; width: 100%; max-width: 380px;
-  padding: 2rem; box-shadow: var(--shadow-lg);
-  animation: slideUp .25s ease;
-}
+.auth-modal { position: fixed; inset: 0; z-index: 300; background: rgba(13,13,15,.8); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.auth-panel { background: var(--paper); border: 1px solid var(--border); border-radius: 10px; width: 100%; max-width: 380px; padding: 2rem; box-shadow: var(--shadow-lg); animation: slideUp .25s ease; }
 .auth-panel h2 { font-family: var(--display); font-size: 1.5rem; font-weight: 900; margin-bottom: 1.4rem; }
 .auth-tabs { display: flex; gap: 0; margin-bottom: 1.4rem; border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
 .auth-tab { flex: 1; padding: .5rem; text-align: center; cursor: pointer; font-family: var(--mono); font-size: .8rem; background: var(--card-bg); transition: all .15s; }
 .auth-tab.active { background: var(--ink); color: var(--paper); }
 
-.avatar-wrap { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-weight: 900; font-size: 1.1rem; color: #fff; cursor: pointer; flex-shrink: 0; border: 2px solid rgba(255,255,255,.2); transition: transform .15s; }
+.avatar-wrap { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-weight: 900; font-size: 1.1rem; color: #fff; cursor: pointer; flex-shrink: 0; border: 2px solid rgba(255,255,255,.2); transition: transform .15s, box-shadow .15s; }
 .avatar-wrap:hover { transform: scale(1.08); }
+body.dev-mode .avatar-wrap { border-color: var(--dev-green); box-shadow: 0 0 12px rgba(74,222,128,.3); }
 
-.profile-dropdown {
-  position: absolute; top: 56px; right: 0;
-  background: var(--paper); border: 1px solid var(--border);
-  border-radius: var(--r); min-width: 200px;
-  box-shadow: var(--shadow-lg); z-index: 200;
-  overflow: hidden;
-}
+.profile-dropdown { position: absolute; top: 56px; right: 0; background: var(--paper); border: 1px solid var(--border); border-radius: var(--r); min-width: 200px; box-shadow: var(--shadow-lg); z-index: 200; overflow: hidden; }
 .profile-dropdown-item { padding: .7rem 1rem; font-size: .88rem; cursor: pointer; display: flex; align-items: center; gap: .6rem; transition: background .15s; }
 .profile-dropdown-item:hover { background: var(--cream); }
 .profile-wrap { position: relative; }
-
 .interest-tags { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .5rem; }
 .interest-tag { padding: .25rem .65rem; border-radius: 20px; font-size: .75rem; font-family: var(--mono); cursor: pointer; border: 1px solid var(--border); background: var(--card-bg); transition: all .15s; }
 .interest-tag.selected { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 
-
 /* ═══ GEMINI PANEL ═══ */
-.gemini-panel {
-  position: fixed; inset: 0; z-index: 400;
-  background: rgba(13,13,15,.85); backdrop-filter: blur(8px);
-  display: flex; align-items: center; justify-content: center; padding: 1rem;
-}
-.gemini-box {
-  background: var(--ink); color: var(--paper);
-  border: 1px solid var(--gold);
-  border-radius: 10px; width: 100%; max-width: 480px;
-  padding: 1.8rem; box-shadow: 0 0 40px rgba(184,134,11,.2);
-  animation: slideUp .25s ease;
-}
-.gemini-box h3 { font-family: var(--display); font-size: 1.3rem; color: var(--gold-lt); margin-bottom: 1.2rem; }
-.gemini-box input {
-  width: 100%; background: rgba(255,255,255,.08);
-  border: 1px solid rgba(184,134,11,.4); border-radius: var(--r);
-  padding: .6rem .9rem; color: var(--paper);
-  font-family: var(--mono); font-size: .85rem; outline: none; margin-bottom: .8rem;
-}
-.gemini-box input:focus { border-color: var(--gold); }
-.gemini-status {
-  font-family: var(--mono); font-size: .8rem; color: var(--gold-lt);
-  margin-top: .8rem; min-height: 1.2rem; text-align: center;
-}
-.gemini-log {
-  background: rgba(0,0,0,.3); border-radius: 4px;
-  padding: .6rem .8rem; margin-top: .8rem;
-  font-family: var(--mono); font-size: .75rem; color: #aaa;
-  max-height: 120px; overflow-y: auto; display: none;
-}
+.gemini-panel { position: fixed; inset: 0; z-index: 400; background: rgba(13,13,15,.9); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.gemini-box { background: var(--dev-bg); color: var(--paper); border: 1px solid rgba(74,222,128,.4); border-radius: 10px; width: 100%; max-width: 480px; padding: 1.8rem; box-shadow: 0 0 60px rgba(74,222,128,.15); animation: slideUp .25s ease; }
+.gemini-box h3 { font-family: var(--display); font-size: 1.3rem; color: var(--dev-green); margin-bottom: 1.2rem; display: flex; align-items: center; gap: .6rem; }
+.gemini-box input { width: 100%; background: rgba(74,222,128,.06); border: 1px solid rgba(74,222,128,.3); border-radius: var(--r); padding: .6rem .9rem; color: var(--paper); font-family: var(--mono); font-size: .85rem; outline: none; margin-bottom: .8rem; }
+.gemini-box input:focus { border-color: var(--dev-green); }
+.gemini-status { font-family: var(--mono); font-size: .8rem; color: var(--dev-green); margin-top: .8rem; min-height: 1.2rem; text-align: center; }
+.gemini-log { background: rgba(0,0,0,.5); border-radius: 4px; padding: .6rem .8rem; margin-top: .8rem; font-family: var(--mono); font-size: .75rem; color: rgba(74,222,128,.6); max-height: 120px; overflow-y: auto; display: none; border: 1px solid rgba(74,222,128,.15); }
 .pulse { animation: pulse 1.5s ease-in-out infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
-/* ═══ IMPROVED CARDS ═══ */
-.article-card { position: relative; }
-.card-badge {
-  position: absolute; top: .6rem; left: .6rem;
-  background: var(--gold); color: var(--ink);
-  font-family: var(--mono); font-size: .65rem; font-weight: 700;
-  padding: .18rem .5rem; border-radius: 3px; letter-spacing: .05em;
-}
-.card-badge.ai { background: #7c3aed; color: #fff; }
-.card-body { gap: .4rem; }
-.card-title { font-size: 1.08rem; }
-.card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: .4rem; }
-
-/* ═══ HERO SECTION ═══ */
-.hero {
-  background: linear-gradient(135deg, var(--ink) 0%, #1a1208 100%);
-  border: 1px solid var(--border); border-radius: var(--r);
-  padding: 2rem; margin-bottom: 1.5rem; position: relative; overflow: hidden;
-}
-.hero::before {
-  content: ''; position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 70% 50%, rgba(184,134,11,.12) 0%, transparent 60%);
-  pointer-events: none;
-}
+/* ═══ HERO ═══ */
+.hero { background: linear-gradient(135deg, var(--ink) 0%, #1a1208 100%); border: 1px solid var(--border); border-radius: var(--r); padding: 2rem; margin-bottom: 1.5rem; position: relative; overflow: hidden; }
+.hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 70% 50%, rgba(184,134,11,.12) 0%, transparent 60%); pointer-events: none; }
 .hero-label { font-family: var(--mono); font-size: .7rem; letter-spacing: .18em; color: var(--gold); text-transform: uppercase; margin-bottom: .5rem; }
 .hero-title { font-family: var(--display); font-size: clamp(1.4rem,4vw,2.2rem); font-weight: 900; color: var(--paper); line-height: 1.2; margin-bottom: .6rem; }
 .hero-sub { color: rgba(245,240,232,.6); font-size: .9rem; margin-bottom: 1.2rem; }
@@ -571,6 +434,17 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
 </head>
 <body>
 <div id="app">
+
+  <!-- DEV INFO BAR -->
+  <div class="dev-infobar" id="devInfoBar">
+    ⚡ DEV MODE — IP: <span id="devIPDisplay">...</span> &nbsp;·&nbsp; Все admin-роуты разблокированы &nbsp;·&nbsp; Double-click на ★ для визуальной накрутки
+  </div>
+
+  <!-- READING PROGRESS -->
+  <div class="reading-progress" id="readingProgress">
+    <div class="reading-progress-bar" id="readingBar"></div>
+  </div>
+
   <!-- HEADER -->
   <header>
     <div class="header-inner">
@@ -583,6 +457,8 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
       </div>
       <div class="header-actions">
         <button class="btn btn-ghost btn-sm" onclick="App.showHome()">Главная</button>
+        <!-- DEV кнопка Gemini — показывается только дев юзерам -->
+        <button class="btn btn-dev btn-sm" id="geminiHeaderBtn" onclick="Gemini.openPanel()" style="display:none">🤖 Gemini</button>
         <div class="profile-wrap" id="profileWrap">
           <div id="profileBtn" onclick="Profile.toggleDropdown()"></div>
           <div class="profile-dropdown" id="profileDropdown" style="display:none">
@@ -590,10 +466,9 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
             <div class="profile-dropdown-item" onclick="Profile.showInterests()">🏷 Мои интересы</div>
             <div class="profile-dropdown-item" onclick="Profile.requestNotifications()">🔔 Уведомления</div>
             <div class="profile-dropdown-item" style="color:var(--muted);font-size:.75rem;padding:.4rem 1rem" id="notifStatus">Push: выкл</div>
-            <div class="profile-dropdown-item" onclick="Gemini.openPanel()" id="geminiBtn" style="display:none">🤖 Gemini истории</div>
           </div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="Editor.open()">＋ Добавить статью</button>
+        <button class="btn btn-primary btn-sm" onclick="Editor.open()">＋ Статья</button>
       </div>
     </div>
   </header>
@@ -601,7 +476,6 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
   <!-- MAIN -->
   <main>
     <div class="layout">
-      <!-- SIDEBAR -->
       <aside id="sidebar">
         <h3>Разделы</h3>
         <div class="tag-cloud" id="tagCloud">
@@ -609,15 +483,12 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
         </div>
         <div class="sidebar-stats" id="sidebarStats"></div>
       </aside>
-
-      <!-- CONTENT -->
       <div class="content-area" id="contentArea">
         <div class="spinner"></div>
       </div>
     </div>
   </main>
 </div>
-
 
 <!-- AUTH MODAL -->
 <div class="auth-modal" id="authModal" style="display:none">
@@ -637,7 +508,7 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
     </div>
     <div style="margin-top:1rem;display:flex;flex-direction:column;gap:.5rem">
       <button class="btn btn-primary" onclick="Profile.submit()" style="width:100%">Продолжить →</button>
-      <p style="font-size:.75rem;color:var(--muted);text-align:center;line-height:1.4">Аккаунт привязывается к этому устройству навсегда. Выйти будет невозможно.</p>
+      <p style="font-size:.75rem;color:var(--muted);text-align:center;line-height:1.4">Аккаунт привязан к устройству. Выйти невозможно.</p>
     </div>
   </div>
 </div>
@@ -649,38 +520,40 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
     <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem">Выбери темы — подборка статей станет точнее</p>
     <div class="interest-tags" id="interestTagsList"></div>
     <div style="margin-top:1.2rem;display:flex;gap:.6rem;justify-content:flex-end">
-      <button class="btn btn-ghost" onclick="document.getElementById('interestsModal').style.display='none'">Отмена</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('interestsModal').style.display='none'" style="color:var(--ink)">Отмена</button>
       <button class="btn btn-primary" onclick="Profile.saveInterests()">Сохранить</button>
     </div>
   </div>
 </div>
 
-
-<!-- GEMINI MODAL -->
+<!-- GEMINI MODAL (только для дев) -->
 <div class="gemini-panel" id="geminiPanel" style="display:none">
   <div class="gemini-box">
     <h3>🤖 Gemini — Генератор историй</h3>
+    <div style="font-family:var(--mono);font-size:.72rem;color:rgba(74,222,128,.5);margin-bottom:1rem">
+      Серверный крон · только с твоего IP · ключ нигде не логируется
+    </div>
     <div class="field" style="margin-bottom:.6rem">
-      <label style="color:rgba(245,240,232,.5);font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:.35rem">Gemini API Key</label>
+      <label style="color:rgba(74,222,128,.5);font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:.35rem">Gemini API Key</label>
       <input type="password" id="geminiKey" placeholder="AIza...">
     </div>
     <div class="field" style="margin-bottom:.8rem">
-      <label style="color:rgba(245,240,232,.5);font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:.35rem">Интервал (минут)</label>
+      <label style="color:rgba(74,222,128,.5);font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:.35rem">Интервал (минут)</label>
       <input type="number" id="geminiInterval" value="4" min="3" max="60" placeholder="3-60 минут">
     </div>
-    <div id="geminiServerStatus" style="font-family:var(--mono);font-size:.78rem;color:var(--gold-lt);margin-bottom:.8rem;min-height:1.2rem"></div>
+    <div id="geminiServerStatus" style="font-family:var(--mono);font-size:.78rem;color:rgba(74,222,128,.8);margin-bottom:.8rem;min-height:1.2rem"></div>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap">
-      <button class="btn btn-primary" onclick="Gemini.startServer()" style="flex:1">⚡ Запустить на сервере</button>
-      <button class="btn btn-ghost" onclick="Gemini.stopServer()" style="flex:1;border-color:#f87171;color:#f87171">⏹ Остановить</button>
+      <button class="btn" style="flex:1;background:rgba(74,222,128,.15);color:var(--dev-green);border:1px solid rgba(74,222,128,.4)" onclick="Gemini.startServer()">⚡ Запустить</button>
+      <button class="btn" style="flex:1;background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.3)" onclick="Gemini.stopServer()">⏹ Остановить</button>
     </div>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.6rem">
-      <button class="btn btn-ghost" onclick="Gemini.generateOne()" style="flex:1;border-color:var(--gold);color:var(--gold)">✨ Разовая история</button>
-      <button class="btn btn-ghost btn-sm" onclick="Gemini.checkStatus()" style="border-color:rgba(255,255,255,.2)">📊 Статус</button>
+      <button class="btn" style="flex:1;background:rgba(74,222,128,.08);color:rgba(74,222,128,.8);border:1px solid rgba(74,222,128,.2)" onclick="Gemini.generateOne()">✨ Разовая история</button>
+      <button class="btn btn-sm" style="background:transparent;color:rgba(74,222,128,.5);border:1px solid rgba(74,222,128,.2)" onclick="Gemini.checkStatus()">📊 Статус</button>
     </div>
     <div class="gemini-status" id="geminiStatus"></div>
     <div class="gemini-log" id="geminiLog"></div>
     <div style="margin-top:1rem;display:flex;justify-content:flex-end">
-      <button class="btn btn-ghost btn-sm" onclick="Gemini.close()" style="border-color:rgba(255,255,255,.2)">Закрыть</button>
+      <button class="btn btn-sm" style="background:transparent;color:rgba(74,222,128,.5);border:1px solid rgba(74,222,128,.2)" onclick="Gemini.close()">Закрыть</button>
     </div>
   </div>
 </div>
@@ -689,7 +562,6 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
 <div class="editor-modal" id="editorModal" style="display:none">
   <div class="editor-panel">
     <div class="editor-title">✦ Новая статья</div>
-
     <div class="field-row">
       <div class="field">
         <label>Заголовок *</label>
@@ -700,19 +572,16 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
         <input type="text" id="ef-author" placeholder="Ваше имя">
       </div>
     </div>
-
     <div class="field">
       <label>Краткое описание</label>
       <textarea id="ef-summary" placeholder="Одним абзацем: о чём эта статья?"></textarea>
     </div>
-
     <div class="field">
       <label>Ключевые слова / Теги</label>
       <div class="tags-input-wrap" id="tagsWrap" onclick="document.getElementById('tagInput').focus()">
         <input type="text" id="tagInput" placeholder="Введите тег и нажмите Enter…">
       </div>
     </div>
-
     <div class="field">
       <label>Обложка</label>
       <div class="upload-area" id="coverUploadArea">
@@ -721,7 +590,6 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
         <img id="coverPreview" style="display:none">
       </div>
     </div>
-
     <div class="field">
       <label>Содержимое статьи (чанки)</label>
       <div class="chunk-editor">
@@ -735,9 +603,7 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
           <button class="chunk-type-btn" data-type="divider">— Разделитель</button>
         </div>
         <div class="chunks-list" id="chunksList">
-          <div class="empty-state" style="padding:1.2rem">
-            <p style="font-size:.85rem">Блоки появятся здесь. Начните добавлять контент ↓</p>
-          </div>
+          <div class="empty-state" style="padding:1.2rem"><p style="font-size:.85rem">Блоки появятся здесь. Начните добавлять контент ↓</p></div>
         </div>
         <div class="chunk-input-area">
           <textarea id="chunkText" placeholder="Введите текст блока…"></textarea>
@@ -755,10 +621,9 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
         </div>
       </div>
     </div>
-
     <div class="editor-actions">
-      <button class="btn btn-ghost" onclick="Editor.close()">Отмена</button>
-      <button class="btn btn-primary" onclick="Editor.save()">Опубликовать статью →</button>
+      <button class="btn btn-ghost" onclick="Editor.close()" style="color:var(--ink)">Отмена</button>
+      <button class="btn btn-primary" onclick="Editor.save()">Опубликовать →</button>
     </div>
   </div>
 </div>
@@ -767,7 +632,6 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
 /* ═══════════════════════════════════════════════════════
    CONFIG
 ═══════════════════════════════════════════════════════ */
-// Автоматически берёт адрес текущей страницы — работает и локально и на Railway
 const API = window.location.origin + '/api';
 
 /* ═══════════════════════════════════════════════════════
@@ -782,13 +646,13 @@ const el = (tag, cls, html) => {
 };
 
 let toastTimer;
-function toast(msg, isErr = false) {
+function toast(msg, type = '') {
   clearTimeout(toastTimer);
   let t = document.querySelector('.toast');
   if (!t) { t = el('div','toast'); document.body.appendChild(t); }
   t.textContent = msg;
-  t.className = 'toast' + (isErr ? ' error' : '');
-  toastTimer = setTimeout(() => t.remove(), 3200);
+  t.className = 'toast' + (type ? ' ' + type : '');
+  toastTimer = setTimeout(() => t?.remove(), 3400);
 }
 
 async function apiFetch(url, opts = {}) {
@@ -802,7 +666,7 @@ async function apiFetch(url, opts = {}) {
     return data;
   } catch (e) {
     console.error('API error:', url, e);
-    toast('⚠ ' + e.message, true);
+    toast('⚠ ' + e.message, 'error');
     throw e;
   }
 }
@@ -820,10 +684,37 @@ function tagPillStyle(color = '#6366f1') {
 }
 
 /* ═══════════════════════════════════════════════════════
+   DEV MODE — проверяем через СЕРВЕР, не через ipify
+═══════════════════════════════════════════════════════ */
+let isDevMode = false;
+
+async function checkDevMode() {
+  try {
+    const data = await fetch(API + '/dev/check').then(r => r.json());
+    if (data.isDev) {
+      isDevMode = true;
+      document.body.classList.add('dev-mode');
+      // Показываем IP в info баре
+      const ipEl = $('devIPDisplay');
+      if (ipEl) ipEl.textContent = data.ip;
+      // Кнопка Gemini в хедере
+      const gb = $('geminiHeaderBtn');
+      if (gb) gb.style.display = 'inline-flex';
+      // Бадж в углу
+      const badge = el('div', 'devmode-badge', '⚡ DEV MODE');
+      document.body.appendChild(badge);
+      console.log('%c⚡ DEV MODE — IP: ' + data.ip, 'color:#4ade80;font-size:1rem;font-weight:bold;background:#0a1a0f;padding:4px 8px;border-radius:4px');
+    }
+  } catch (e) {
+    console.warn('Dev check failed:', e.message);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
    APP STATE
 ═══════════════════════════════════════════════════════ */
 const State = {
-  view: 'home',      // 'home' | 'article' | 'search'
+  view: 'home',
   page: 1,
   sort: 'created_at',
   activeTag: null,
@@ -838,11 +729,10 @@ const State = {
 function renderChunk(c) {
   switch (c.type) {
     case 'heading':
-      const level = (c.meta?.level || 2) === 3 ? 'h3' : 'h2';
-      return `<div class="chunk chunk-${level}">${c.content}</div>`;
+      return `<div class="chunk chunk-h2">${c.content}</div>`;
     case 'image':
       const cap = c.meta?.caption || '';
-      return `<div class="chunk chunk-img-wrap"><img class="chunk-img" src="${c.content}" alt="${cap}" loading="lazy"><p class="chunk-img-caption">${cap}</p></div>`;
+      return `<div class="chunk chunk-img-wrap"><img class="chunk-img" src="${c.content}" alt="${cap}" loading="lazy">${cap ? `<p class="chunk-img-caption">${cap}</p>` : ''}</div>`;
     case 'code':
       return `<pre class="chunk chunk-code">${c.content.replace(/</g,'&lt;')}</pre>`;
     case 'quote':
@@ -875,7 +765,6 @@ async function loadSidebar() {
 }
 
 function renderSidebar() {
-  // Tags
   const tc = $('tagCloud');
   tc.innerHTML = '';
   if (!State.tags.length) { tc.innerHTML = '<p style="font-size:.8rem;color:var(--muted)">Нет тегов</p>'; }
@@ -891,12 +780,11 @@ function renderSidebar() {
       tc.appendChild(p);
     });
   }
-  // Stats
   const ss = $('sidebarStats');
   ss.innerHTML = `
     <div class="sidebar-stats">
       <div class="stat-row"><span>Статей</span><strong>${State.stats.articles || 0}</strong></div>
-      <div class="stat-row"><span>Просмотров</span><strong>${State.stats.totalViews || 0}</strong></div>
+      <div class="stat-row"><span>Просмотров</span><strong>${(State.stats.totalViews || 0).toLocaleString('ru')}</strong></div>
       <div class="stat-row"><span>Блоков</span><strong>${State.stats.chunks || 0}</strong></div>
       <div class="stat-row"><span>Тегов</span><strong>${State.stats.tags || 0}</strong></div>
     </div>`;
@@ -914,6 +802,7 @@ async function loadArticles() {
   if (!data) { ca.innerHTML = '<div class="empty-state"><div class="icon">⚠</div><p>Ошибка загрузки</p></div>'; return; }
 
   const title = State.activeTag ? `# ${State.activeTag}` : 'Все статьи';
+
   const heroHtml = `
     <div class="hero">
       <div class="hero-label">✦ Encyclopaedia Nexus</div>
@@ -939,12 +828,17 @@ async function loadArticles() {
     data.articles.forEach(a => {
       const tags = a.tags ? a.tags.split(',') : [];
       const colors = a.tag_colors ? a.tag_colors.split(',') : [];
-      const tagHtml = tags.slice(0,4).map((t,i) => `<span class="card-tag" style="${tagPillStyle(colors[i]||'#6366f1')}">${t}</span>`).join('');
+      const tagHtml = tags.slice(0,4).map((t,i) =>
+        `<span class="card-tag" style="${tagPillStyle(colors[i]||'#6366f1')}">${t}</span>`
+      ).join('');
       const cover = a.cover_url
         ? `<img class="card-cover" src="${a.cover_url}" alt="" loading="lazy">`
         : `<div class="card-cover-placeholder">📄</div>`;
+      const isAI = a.author?.includes('Gemini') || a.author?.includes('🤖');
+
       html += `
         <div class="article-card" onclick="App.showArticle('${a.slug}')">
+          ${isAI ? '<span class="dev-delete-btn" onclick="event.stopPropagation();DevAdmin.deleteArticle(' + a.id + ',this.closest(\'.article-card\'))">✕ Удалить</span>' : ''}
           ${cover}
           <div class="card-body">
             <div class="card-title">${a.title}</div>
@@ -952,7 +846,7 @@ async function loadArticles() {
             <div class="stars" style="margin-top:.2rem" onclick="event.stopPropagation()" data-id="${a.id}"></div>
             <div class="card-meta">
               <span>👤 ${a.author}</span>
-              <span>👁 ${a.views}</span>
+              <span>👁 ${(a.views||0).toLocaleString('ru')}</span>
               <span>🗓 ${new Date(a.created_at).toLocaleDateString('ru')}</span>
             </div>
             ${tagHtml ? `<div class="card-tags">${tagHtml}</div>` : ''}
@@ -976,7 +870,7 @@ async function loadArticles() {
 
   ca.innerHTML = html;
 
-  // Load real ratings from DB and render stars on cards
+  // Load ratings
   const cards = document.querySelectorAll('.stars[data-id]');
   if (cards.length) {
     const ids = [...cards].map(el => parseInt(el.dataset.id));
@@ -986,7 +880,7 @@ async function loadArticles() {
 }
 
 /* ═══════════════════════════════════════════════════════
-   ARTICLE VIEW + SMART CHUNK LAZY LOADING
+   ARTICLE VIEW + LAZY LOADING
 ═══════════════════════════════════════════════════════ */
 const ArticleView = {
   articleId: null,
@@ -999,23 +893,41 @@ const ArticleView = {
     ca.innerHTML = '<div class="spinner"></div>';
     this.chunkPage = 1;
 
+    // Показываем прогресс-бар
+    const progressBar = $('readingProgress');
+    if (progressBar) progressBar.style.display = 'block';
+
     const article = await apiFetch(`/articles/${slug}`).catch(() => null);
-    if (!article) { ca.innerHTML = '<div class="empty-state"><div class="icon">404</div><p>Статья не найдена</p></div>'; return; }
+    if (!article) {
+      ca.innerHTML = '<div class="empty-state"><div class="icon">404</div><p>Статья не найдена</p></div>';
+      return;
+    }
 
     this.articleId = article.id;
     const tags = article.tags ? article.tags.split(',') : [];
     const colors = article.tag_colors ? article.tag_colors.split(',') : [];
-    const tagHtml = tags.map((t,i) => `<span class="tag-pill" style="${tagPillStyle(colors[i]||'#6366f1')}">${t}</span>`).join('');
+    const tagHtml = tags.map((t,i) =>
+      `<span class="tag-pill" style="${tagPillStyle(colors[i]||'#6366f1')}">${t}</span>`
+    ).join('');
+
+    // DEV: кнопка удаления статьи
+    const devDeleteBtn = isDevMode
+      ? `<button onclick="DevAdmin.deleteArticle(${article.id}, null)" 
+           style="margin-bottom:.5rem;background:#c0392b;color:#fff;border:none;border-radius:4px;padding:.3rem .8rem;font-family:var(--mono);font-size:.75rem;cursor:pointer">
+           ✕ Удалить статью
+         </button>`
+      : '';
 
     ca.innerHTML = `
       <div class="article-view">
         <div class="article-header">
           <button class="back-btn" onclick="App.showHome()">← Вернуться к списку</button>
+          ${devDeleteBtn}
           ${article.cover_url ? `<img class="article-cover" src="${article.cover_url}" alt="">` : ''}
           <h1 class="article-title">${article.title}</h1>
           <div class="article-byline">
             <span>✍ ${article.author}</span>
-            <span>👁 ${article.views + 1} просмотров</span>
+            <span>👁 ${((article.views||0)+1).toLocaleString('ru')} просмотров</span>
             <span>🗓 ${new Date(article.created_at).toLocaleDateString('ru',{day:'numeric',month:'long',year:'numeric'})}</span>
           </div>
           ${article.summary ? `<div class="article-summary">${article.summary}</div>` : ''}
@@ -1024,9 +936,41 @@ const ArticleView = {
         <div class="section-rule"><span class="section-rule-text">Содержание</span></div>
         <div class="chunk-container" id="chunkContainer"></div>
         <div id="loadMoreWrap"></div>
+        <div class="article-rating-section">
+          <h4>Оценить статью</h4>
+          <div class="stars stars-large" id="articleRatingWidget" data-id="${article.id}"></div>
+        </div>
       </div>`;
 
     await this.loadMoreChunks();
+
+    // Рейтинг внизу статьи
+    const ratingEl = $('articleRatingWidget');
+    if (ratingEl) {
+      await Ratings.loadSingle(article.id);
+      Ratings.renderWidget(article.id, ratingEl, true);
+    }
+
+    // Прогресс-бар чтения
+    this.initReadingProgress();
+  },
+
+  initReadingProgress() {
+    const bar = $('readingBar');
+    const onScroll = () => {
+      const el = document.documentElement;
+      const scrolled = el.scrollTop || document.body.scrollTop;
+      const total = el.scrollHeight - el.clientHeight;
+      const pct = total > 0 ? Math.min(100, (scrolled / total) * 100) : 0;
+      if (bar) bar.style.width = pct + '%';
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    // Убираем при возврате на главную
+    this._removeProgress = () => {
+      window.removeEventListener('scroll', onScroll);
+      const p = $('readingProgress');
+      if (p) p.style.display = 'none';
+    };
   },
 
   async loadMoreChunks() {
@@ -1063,6 +1007,29 @@ const ArticleView = {
 };
 
 /* ═══════════════════════════════════════════════════════
+   DEV ADMIN
+═══════════════════════════════════════════════════════ */
+const DevAdmin = {
+  async deleteArticle(id, cardEl) {
+    if (!isDevMode) return;
+    if (!confirm('Удалить статью #' + id + '?')) return;
+    try {
+      await apiFetch('/articles/' + id, { method: 'DELETE' });
+      toast('🗑 Статья удалена', 'dev');
+      if (cardEl) {
+        cardEl.style.transition = 'opacity .3s, transform .3s';
+        cardEl.style.opacity = '0';
+        cardEl.style.transform = 'scale(.95)';
+        setTimeout(() => { cardEl.remove(); loadSidebar(); }, 300);
+      } else {
+        App.showHome();
+        loadSidebar();
+      }
+    } catch {}
+  }
+};
+
+/* ═══════════════════════════════════════════════════════
    SEARCH
 ═══════════════════════════════════════════════════════ */
 let searchDebounce;
@@ -1074,8 +1041,6 @@ $('searchInput').addEventListener('input', e => {
 });
 
 async function doSearch(q) {
-  // Boost results matching user interests
-  const interests = currentUser?.interests || [];
   State.view = 'search';
   State.searchQ = q;
   const ca = $('contentArea');
@@ -1113,6 +1078,11 @@ const App = {
     State.view = 'home';
     State.page = 1;
     $('searchInput').value = '';
+    // Убираем прогресс-бар если был
+    if (ArticleView._removeProgress) {
+      ArticleView._removeProgress();
+      ArticleView._removeProgress = null;
+    }
     loadArticles();
   },
   showArticle(slug) {
@@ -1136,7 +1106,7 @@ const Editor = {
     this.coverUrl = '';
     this.activeType = 'text';
     $('ef-title').value = '';
-    $('ef-author').value = '';
+    $('ef-author').value = currentUser?.username || '';
     $('ef-summary').value = '';
     $('chunkText').value = '';
     $('chunkTypeSelect').value = 'text';
@@ -1150,7 +1120,7 @@ const Editor = {
   addChunk() {
     const text = $('chunkText').value.trim();
     const type = $('chunkTypeSelect').value;
-    if (type !== 'divider' && !text) { toast('Введите текст блока', true); return; }
+    if (type !== 'divider' && !text) { toast('Введите текст блока', 'error'); return; }
     this.chunks.push({ type, content: text || '---', meta: null });
     $('chunkText').value = '';
     this.renderChunks();
@@ -1202,13 +1172,13 @@ const Editor = {
 
   async save() {
     const title = $('ef-title').value.trim();
-    if (!title) { toast('Введите заголовок', true); return; }
+    if (!title) { toast('Введите заголовок', 'error'); return; }
 
     let cover_url = this.coverUrl;
     const file = $('coverFile').files[0];
     if (file) {
       try { cover_url = await this.uploadCover(file); }
-      catch { toast('Ошибка загрузки обложки', true); return; }
+      catch { toast('Ошибка загрузки обложки', 'error'); return; }
     }
 
     try {
@@ -1216,7 +1186,7 @@ const Editor = {
         method: 'POST',
         body: JSON.stringify({
           title,
-          author: $('ef-author').value || 'Anonymous',
+          author: $('ef-author').value || currentUser?.username || 'Anonymous',
           summary: $('ef-summary').value,
           cover_url,
           tags: this.tags,
@@ -1227,34 +1197,25 @@ const Editor = {
       toast('✓ Статья опубликована!');
       await loadSidebar();
       App.showArticle(result.slug);
-    } catch(e) { toast('Ошибка: ' + e.message, true); }
+    } catch(e) { toast('Ошибка: ' + e.message, 'error'); }
   }
 };
 
-/* Chunk toolbar buttons */
+/* Chunk toolbar */
 document.querySelectorAll('.chunk-type-btn').forEach(btn => {
   btn.onclick = () => {
     document.querySelectorAll('.chunk-type-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     $('chunkTypeSelect').value = btn.dataset.type;
     Editor.activeType = btn.dataset.type;
-    $('chunkText').placeholder =
-      btn.dataset.type === 'image' ? 'https://example.com/image.jpg' :
-      btn.dataset.type === 'code'  ? 'const x = 42;' :
-      btn.dataset.type === 'quote' ? 'Слова великого человека…' :
-      btn.dataset.type === 'heading' ? 'Заголовок раздела' :
-      btn.dataset.type === 'divider' ? '(не нужно — просто нажмите "Добавить")' :
-      'Введите текст абзаца…';
+    const placeholders = { image:'https://example.com/image.jpg', code:'const x = 42;', quote:'Слова великого человека…', heading:'Заголовок раздела', divider:'(не нужно — просто нажмите "Добавить")', text:'Введите текст абзаца…' };
+    $('chunkText').placeholder = placeholders[btn.dataset.type] || '';
   };
 });
 
 /* Tag input */
 $('tagInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter' || e.key === ',') {
-    e.preventDefault();
-    Editor.addTag($('tagInput').value);
-    $('tagInput').value = '';
-  }
+  if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); Editor.addTag($('tagInput').value); $('tagInput').value = ''; }
 });
 
 /* Cover upload */
@@ -1264,51 +1225,32 @@ coverArea.addEventListener('dragleave', () => coverArea.classList.remove('drag')
 coverArea.addEventListener('drop', e => {
   e.preventDefault(); coverArea.classList.remove('drag');
   const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('image/')) previewCover(file);
+  if (file?.type.startsWith('image/')) previewCover(file);
 });
 $('coverFile').addEventListener('change', e => { if (e.target.files[0]) previewCover(e.target.files[0]); });
 
 function previewCover(file) {
   const reader = new FileReader();
-  reader.onload = e => {
-    const img = $('coverPreview');
-    img.src = e.target.result;
-    img.style.display = 'block';
-  };
+  reader.onload = e => { const img = $('coverPreview'); img.src = e.target.result; img.style.display = 'block'; };
   reader.readAsDataURL(file);
 }
 
-/* Close modal on backdrop click */
 $('editorModal').addEventListener('click', e => { if (e.target === $('editorModal')) Editor.close(); });
-
-/* Keyboard: Esc to close */
 document.addEventListener('keydown', e => { if (e.key === 'Escape') Editor.close(); });
 
-
-
 /* ═══════════════════════════════════════════════════════
-   PROFILE / AUTH SYSTEM
+   PROFILE / AUTH
 ═══════════════════════════════════════════════════════ */
-
-// Генерируем уникальный device_id и храним в localStorage
 function getDeviceId() {
   let id = localStorage.getItem('nexus_device_id');
-  if (!id) {
-    id = 'dev_' + crypto.randomUUID();
-    localStorage.setItem('nexus_device_id', id);
-  }
+  if (!id) { id = 'dev_' + crypto.randomUUID(); localStorage.setItem('nexus_device_id', id); }
   return id;
 }
-
 const DEVICE_ID = getDeviceId();
 let currentUser = null;
-let authMode = 'reg'; // 'reg' | 'login'
+let authMode = 'reg';
 
-const INTEREST_OPTIONS = [
-  'История','Наука','Технологии','Искусство','Музыка',
-  'Кино','Игры','Спорт','Природа','Медицина',
-  'Философия','Математика','Литература','Путешествия','Кулинария'
-];
+const INTEREST_OPTIONS = ['История','Наука','Технологии','Искусство','Музыка','Кино','Игры','Спорт','Природа','Медицина','Философия','Математика','Литература','Путешествия','Кулинария'];
 
 const Profile = {
   async init() {
@@ -1317,7 +1259,6 @@ const Profile = {
       currentUser = data.user;
       this.renderBtn();
     } else {
-      // Показываем регистрацию при первом заходе
       setTimeout(() => { $('authModal').style.display = 'flex'; }, 800);
       this.renderBtn();
     }
@@ -1347,21 +1288,16 @@ const Profile = {
   },
 
   async submit() {
-    const username  = $('auth-username').value.trim();
-    const password  = $('auth-password').value;
-    if (!username || !password) { toast('Заполни все поля', true); return; }
-
+    const username = $('auth-username').value.trim();
+    const password = $('auth-password').value;
+    if (!username || !password) { toast('Заполни все поля', 'error'); return; }
     const endpoint = authMode === 'reg' ? '/auth/register' : '/auth/login';
     try {
-      const user = await apiFetch(endpoint, {
-        method: 'POST',
-        body: JSON.stringify({ username, password, device_id: DEVICE_ID })
-      });
+      const user = await apiFetch(endpoint, { method: 'POST', body: JSON.stringify({ username, password, device_id: DEVICE_ID }) });
       currentUser = user;
       $('authModal').style.display = 'none';
       this.renderBtn();
       toast('✓ Добро пожаловать, ' + user.username + '!');
-      // После регистрации — показать интересы
       if (authMode === 'reg') setTimeout(() => this.showInterests(), 600);
     } catch {}
   },
@@ -1369,7 +1305,7 @@ const Profile = {
   showProfile() {
     $('profileDropdown').style.display = 'none';
     if (!currentUser) return;
-    toast('👤 ' + currentUser.username);
+    toast('👤 ' + currentUser.username + (isDevMode ? ' ⚡ DEV' : ''));
   },
 
   showInterests() {
@@ -1377,8 +1313,7 @@ const Profile = {
     const list = $('interestTagsList');
     const saved = currentUser?.interests || [];
     list.innerHTML = INTEREST_OPTIONS.map(t =>
-      `<span class="interest-tag ${saved.includes(t) ? 'selected' : ''}" 
-        onclick="this.classList.toggle('selected')">${t}</span>`
+      `<span class="interest-tag ${saved.includes(t) ? 'selected' : ''}" onclick="this.classList.toggle('selected')">${t}</span>`
     ).join('');
     $('interestsModal').style.display = 'flex';
   },
@@ -1386,102 +1321,50 @@ const Profile = {
   async saveInterests() {
     const selected = [...document.querySelectorAll('.interest-tag.selected')].map(el => el.textContent);
     try {
-      await apiFetch('/auth/interests', {
-        method: 'PUT',
-        body: JSON.stringify({ device_id: DEVICE_ID, interests: selected })
-      });
+      await apiFetch('/auth/interests', { method: 'PUT', body: JSON.stringify({ device_id: DEVICE_ID, interests: selected }) });
       if (currentUser) currentUser.interests = selected;
       $('interestsModal').style.display = 'none';
       toast('✓ Интересы сохранены!');
-      await loadArticles(); // обновить подборку
+      await loadArticles();
     } catch {}
   },
 
   async requestNotifications() {
     $('profileDropdown').style.display = 'none';
-    if (!('Notification' in window)) { toast('Браузер не поддерживает уведомления', true); return; }
+    if (!('Notification' in window)) { toast('Браузер не поддерживает уведомления', 'error'); return; }
     const perm = await Notification.requestPermission();
-    if (perm !== 'granted') { toast('Уведомления отклонены', true); return; }
-
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-      try {
-        const reg = await navigator.serviceWorker.register('/sw.js');
-        const sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: 'BNexusEncyclopaediaPublicKeyPlaceholder'
-        });
-        const subData = sub.toJSON();
-        await apiFetch('/push/subscribe', {
-          method: 'POST',
-          body: JSON.stringify({
-            device_id: DEVICE_ID,
-            endpoint: subData.endpoint,
-            p256dh: subData.keys.p256dh,
-            auth: subData.keys.auth
-          })
-        });
-        $('notifStatus').textContent = '🔔 Push: включён';
-        toast('✓ Уведомления включены!');
-      } catch (e) {
-        // Fallback — просто показываем что включено локально
-        $('notifStatus').textContent = '🔔 Push: включён';
-        toast('✓ Уведомления включены!');
-      }
-    } else {
-      toast('Push не поддерживается в этом браузере', true);
-    }
+    if (perm !== 'granted') { toast('Уведомления отклонены', 'error'); return; }
+    $('notifStatus').textContent = '🔔 Push: включён';
+    toast('✓ Уведомления включены!');
   }
 };
 
-// Закрыть дропдаун при клике вне
 document.addEventListener('click', e => {
-  if (!$('profileWrap')?.contains(e.target)) {
-    const dd = $('profileDropdown');
-    if (dd) dd.style.display = 'none';
-  }
+  if (!$('profileWrap')?.contains(e.target)) { const dd = $('profileDropdown'); if (dd) dd.style.display = 'none'; }
 });
 
 /* ═══════════════════════════════════════════════════════
-   DEV MODE (только для IP 5.34.113.82)
-═══════════════════════════════════════════════════════ */
-const DEV_IP = '5.34.113.82';
-let isDevMode = false;
-
-async function checkDevMode() {
-  try {
-    const r = await fetch('https://api.ipify.org?format=json');
-    const d = await r.json();
-    if (d.ip === DEV_IP) {
-      isDevMode = true;
-      const badge = el('div', 'devmode-badge', '⚡ DEV MODE');
-      document.body.appendChild(badge);
-      console.log('%c⚡ DEV MODE ACTIVE', 'color:#4ade80;font-size:1.2rem;font-weight:bold');
-      const gb = $('geminiBtn');
-      if (gb) gb.style.display = 'flex';
-    }
-  } catch {}
-}
-
-/* ═══════════════════════════════════════════════════════
-   STARS / RATING SYSTEM
-   - Обычные юзеры: реальный рейтинг из БД
-   - Dev (5.34.113.82): визуальная накрутка только на экране
+   RATINGS
 ═══════════════════════════════════════════════════════ */
 const Ratings = {
-  cache: {}, // { articleId: { avg, count } }
+  cache: {},
 
   async loadBulk(ids) {
     if (!ids.length) return;
     try {
-      const data = await apiFetch('/ratings/bulk', {
-        method: 'POST',
-        body: JSON.stringify({ ids })
-      });
+      const data = await apiFetch('/ratings/bulk', { method: 'POST', body: JSON.stringify({ ids }) });
       Object.assign(this.cache, data);
     } catch {}
   },
 
-  // Dev mode: визуальная накрутка — только на экране, в БД не пишет
+  async loadSingle(articleId) {
+    try {
+      const data = await apiFetch('/ratings/' + articleId);
+      this.cache[articleId] = data;
+    } catch {}
+  },
+
+  // DEV: визуальная накрутка (только на экране)
   boost(articleId, container) {
     if (!isDevMode) return;
     this.cache[articleId] = {
@@ -1489,14 +1372,15 @@ const Ratings = {
       count: Math.floor(50 + Math.random() * 500)
     };
     this.renderWidget(articleId, container);
-    toast('⚡ DEV: рейтинг накручен визуально!');
+    toast('⚡ DEV: рейтинг накручен визуально', 'dev');
   },
 
-  renderWidget(articleId, container) {
+  renderWidget(articleId, container, large = false) {
     const r = this.cache[articleId] || { avg: 0, count: 0 };
     const filled = Math.round(r.avg);
+    const sizeStyle = large ? 'font-size:1.8rem' : '';
     const stars = [1,2,3,4,5].map(i =>
-      `<span class="star ${i <= filled ? 'filled' : 'empty'}"
+      `<span class="star ${i <= filled ? 'filled' : 'empty'}" style="${sizeStyle}"
         onclick="Ratings.rate(${articleId},${i},this.parentElement)"
         ondblclick="Ratings.boost(${articleId},this.parentElement)"
         title="${isDevMode ? '2x клик = DEV накрутка' : 'Оценить'}">★</span>`
@@ -1504,25 +1388,19 @@ const Ratings = {
     container.innerHTML = stars +
       (r.count
         ? `<span class="rating-count">${Number(r.avg).toFixed(1)} (${r.count})</span>`
-        : `<span class="rating-count" style="font-size:.7rem">Оценить</span>`);
+        : `<span class="rating-count" style="font-size:.7rem;opacity:.6">оценить</span>`);
   },
 
   async rate(articleId, stars, container) {
     if (isDevMode) {
-      // Dev: только визуально
-      this.cache[articleId] = {
-        avg: stars,
-        count: (this.cache[articleId]?.count || 0) + 1
-      };
+      // DEV: только визуально, в БД не пишет
+      this.cache[articleId] = { avg: stars, count: (this.cache[articleId]?.count || 0) + 1 };
       this.renderWidget(articleId, container);
-      toast('⚡ DEV: визуальная оценка ' + '★'.repeat(stars));
+      toast('⚡ DEV: визуальная оценка ' + '★'.repeat(stars), 'dev');
       return;
     }
     try {
-      const result = await apiFetch(`/ratings/${articleId}`, {
-        method: 'POST',
-        body: JSON.stringify({ stars })
-      });
+      const result = await apiFetch(`/ratings/${articleId}`, { method: 'POST', body: JSON.stringify({ stars }) });
       this.cache[articleId] = result;
       this.renderWidget(articleId, container);
       toast('Оценка ' + '★'.repeat(stars) + ' сохранена!');
@@ -1530,16 +1408,15 @@ const Ratings = {
   }
 };
 
-
 /* ═══════════════════════════════════════════════════════
-   GEMINI STORY GENERATOR (controls server cron)
+   GEMINI (DEV ONLY)
 ═══════════════════════════════════════════════════════ */
 const Gemini = {
   getKey() { return localStorage.getItem('nexus_gemini_key') || ''; },
   saveKey(k) { localStorage.setItem('nexus_gemini_key', k); },
 
   openPanel() {
-    $('profileDropdown').style.display = 'none';
+    if (!isDevMode) { toast('Только для разработчика', 'error'); return; }
     const k = this.getKey();
     if (k) $('geminiKey').value = k;
     $('geminiPanel').style.display = 'flex';
@@ -1560,18 +1437,15 @@ const Gemini = {
 
   async startServer() {
     const key = $('geminiKey').value.trim() || this.getKey();
-    if (!key) { toast('Введи API ключ', true); return; }
+    if (!key) { toast('Введи API ключ', 'error'); return; }
     this.saveKey(key);
     const interval = parseInt($('geminiInterval').value) || 4;
     this.status('Запускаю серверный крон…', true);
     try {
-      const r = await apiFetch('/gemini/key', {
-        method: 'POST',
-        body: JSON.stringify({ key, interval_minutes: interval })
-      });
+      const r = await apiFetch('/gemini/key', { method: 'POST', body: JSON.stringify({ key, interval_minutes: interval }) });
       this.status(`✓ Сервер генерирует истории каждые ${r.interval}`);
       this.log(`Крон запущен, интервал: ${r.interval}`);
-      toast('🤖 Gemini запущен на сервере!');
+      toast('🤖 Gemini запущен!', 'dev');
     } catch(e) { this.status('❌ ' + e.message); }
   },
 
@@ -1580,25 +1454,21 @@ const Gemini = {
       await apiFetch('/gemini/stop', { method: 'POST', body: '{}' });
       this.status('⏹ Крон остановлен');
       this.log('Крон остановлен');
-      toast('Gemini остановлен');
+      toast('Gemini остановлен', 'dev');
     } catch(e) { this.status('❌ ' + e.message); }
   },
 
   async generateOne() {
     const key = $('geminiKey').value.trim() || this.getKey();
-    if (!key) { toast('Введи API ключ', true); return; }
+    if (!key) { toast('Введи API ключ', 'error'); return; }
     this.saveKey(key);
     this.status('Генерирую одну историю…', true);
     try {
-      // Start with interval 999 hours (effectively once)
-      await apiFetch('/gemini/key', {
-        method: 'POST',
-        body: JSON.stringify({ key, interval_minutes: 999 * 60 })
-      });
-      this.status('✓ История генерируется на сервере…');
+      // Запускаем с огромным интервалом = фактически разово
+      await apiFetch('/gemini/key', { method: 'POST', body: JSON.stringify({ key, interval_minutes: 999 * 60 }) });
+      this.status('✓ История генерируется на сервере… (~15 сек)');
       this.log('Разовая генерация запущена');
-      toast('🤖 История генерируется!');
-      // Reload after 15 sec
+      toast('🤖 История генерируется!', 'dev');
       setTimeout(() => { loadSidebar(); loadArticles(); }, 15000);
     } catch(e) { this.status('❌ ' + e.message); }
   },
@@ -1606,28 +1476,21 @@ const Gemini = {
   async checkStatus() {
     try {
       const s = await apiFetch('/gemini/status');
-      const statusEl = $('geminiServerStatus');
+      const el = $('geminiServerStatus');
       if (s.running) {
-        statusEl.innerHTML = `🟢 Работает · каждые ${s.interval_min} мин · сгенерировано: ${s.generated}${s.last ? ' · последняя: ' + s.last.slice(0,30) : ''}`;
+        el.innerHTML = `🟢 Работает · каждые ${s.interval_min} мин · сгенерировано: <strong style="color:var(--dev-green)">${s.generated}</strong>${s.last ? ' · «' + s.last.slice(0,35) + '…»' : ''}`;
       } else {
-        statusEl.innerHTML = '🔴 Остановлен';
+        el.innerHTML = '🔴 Остановлен';
       }
     } catch {}
-  },
-
-  // Auto-refresh status every 30 sec when panel open
-  startStatusRefresh() {
-    setInterval(() => {
-      if ($('geminiPanel').style.display !== 'none') this.checkStatus();
-    }, 30000);
   }
 };
-
 
 /* ═══════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════ */
 (async () => {
+  // ★ Сначала проверяем дев через СЕРВЕР — не через ipify
   await checkDevMode();
   await Profile.init();
   await loadSidebar();
