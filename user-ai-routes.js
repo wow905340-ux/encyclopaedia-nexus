@@ -1,31 +1,5 @@
 'use strict';
 
-/**
- * user-ai-routes.js — Юзерский AI генератор историй
- * 
- * Подключи в encyclopedia-server.js:
- *   require('./user-ai-routes')(app, pool, query, getClientIP);
- * 
- * И добавь в migrate() таблицу:
- *   await query(`
- *     CREATE TABLE IF NOT EXISTS user_ai_crons (
- *       id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
- *       user_id      INT UNSIGNED NOT NULL UNIQUE,
- *       gemini_key   VARCHAR(500) NOT NULL,
- *       interval_min SMALLINT UNSIGNED DEFAULT 60,
- *       active       TINYINT(1) DEFAULT 1,
- *       generated    INT UNSIGNED DEFAULT 0,
- *       last_title   VARCHAR(300),
- *       last_run_at  DATETIME,
- *       created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
- *       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
- *     ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
- *   `);
- * 
- * И вызови после migrate():
- *   migrate().then(() => restoreUserCrons()).catch(...)
- */
-
 const crypto = require('crypto');
 
 const GENRES = [
@@ -41,12 +15,9 @@ const GENRES = [
   'романтическая история в антиутопическом государстве',
 ];
 
-// Map активных кронов: userId → { timer }
 const userCrons = new Map();
 
 module.exports = function registerUserAIRoutes(app, pool, query) {
-
-  // ─── HELPERS ─────────────────────────────────────────────────────────────
 
   function err(res, status, msg) {
     return res.status(status).json({ error: msg });
@@ -99,16 +70,14 @@ module.exports = function registerUserAIRoutes(app, pool, query) {
         })
       }
     );
-
     if (!res.ok) {
       const e = await res.json();
       const error = new Error(e.error?.message || 'Gemini API error');
       error.code = e.error?.code;
       throw error;
     }
-
     const data = await res.json();
-    const raw  = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     return JSON.parse(raw.replace(/```json|```/g, '').trim());
   }
 
@@ -140,53 +109,36 @@ module.exports = function registerUserAIRoutes(app, pool, query) {
     try {
       const story = await callGemini(prompt, geminiKey);
       await publishStory(story, userId, username);
-
       await query(
         'UPDATE user_ai_crons SET generated = generated + 1, last_title = ?, last_run_at = NOW() WHERE user_id = ?',
         [story.title, userId]
       );
-
       console.log(`🤖 [${username}] published: ${story.title}`);
 
-      // Продолжения
       if (story.hasContinuation && story.totalParts > 1) {
         for (let part = 2; part <= Math.min(story.totalParts, 3); part++) {
           await new Promise(r => setTimeout(r, 6000));
           const contPrompt = `Напиши часть ${part} из ${story.totalParts} истории "${story.title}" в жанре ${genre}.
 Продолжи сюжет, сохрани персонажей. Минимум 900 слов.
 ${part === story.totalParts ? 'Финальная часть — дай достойную развязку.' : 'Заверши на интригующей ноте.'}
-
 ФОРМАТ (строго JSON):
-{
-  "title": "${story.title} — Часть ${part}",
-  "summary": "Краткое описание этой части",
-  "tags": ["продолжение", "AI-история"],
-  "content": "Текст минимум 900 слов",
-  "hasContinuation": ${part < story.totalParts},
-  "totalParts": ${story.totalParts}
-}`;
+{"title":"${story.title} — Часть ${part}","summary":"Краткое описание","tags":["продолжение","AI-история"],"content":"Текст минимум 900 слов","hasContinuation":${part < story.totalParts},"totalParts":${story.totalParts}}`;
           const cont = await callGemini(contPrompt, geminiKey);
           await publishStory(cont, userId, username);
           await query(
             'UPDATE user_ai_crons SET generated = generated + 1, last_title = ?, last_run_at = NOW() WHERE user_id = ?',
             [cont.title, userId]
           );
-          console.log(`🤖 [${username}] part ${part} published`);
         }
       }
-
     } catch (e) {
       console.error(`🤖 [${username}] error:`, e.message);
-      // Невалидный ключ — останавливаем крон
       if (e.code === 400 || e.code === 403) {
-        console.error(`🤖 [${username}] bad key, stopping`);
         stopUserCron(userId);
         await query('UPDATE user_ai_crons SET active = 0 WHERE user_id = ?', [userId]).catch(() => {});
       }
     }
   }
-
-  // ─── CRON MANAGEMENT ─────────────────────────────────────────────────────
 
   function stopUserCron(userId) {
     const c = userCrons.get(userId);
@@ -197,16 +149,12 @@ ${part === story.totalParts ? 'Финальная часть — дай дост
   function startUserCron(userId, username, geminiKey, intervalMin) {
     stopUserCron(userId);
     const ms = intervalMin * 60 * 1000;
-
-    // Первый запуск сразу
     generateAndPublish(userId, username, geminiKey);
-
     const timer = setInterval(() => generateAndPublish(userId, username, geminiKey), ms);
     userCrons.set(userId, { timer });
     console.log(`🤖 Cron started: ${username} · every ${intervalMin} min`);
   }
 
-  // Восстановить все активные кроны после рестарта сервера
   async function restoreUserCrons() {
     try {
       const rows = await query(
@@ -224,33 +172,23 @@ ${part === story.totalParts ? 'Финальная часть — дай дост
     }
   }
 
-  // Экспортируем для вызова после migrate()
   app.restoreUserCrons = restoreUserCrons;
-
-  // ─── ROUTES ──────────────────────────────────────────────────────────────
 
   // POST /api/user-ai/start
   app.post('/api/user-ai/start', async (req, res) => {
     try {
       const { device_id, gemini_key, interval_min = 60 } = req.body;
       if (!device_id || !gemini_key) return err(res, 400, 'Missing fields');
-
       const users = await query('SELECT id, username FROM users WHERE device_id = ?', [device_id]);
       if (!users.length) return err(res, 401, 'Not registered');
       const { id: userId, username } = users[0];
-
       const interval = Math.min(1440, Math.max(5, parseInt(interval_min)));
-
       await pool.query(
         `INSERT INTO user_ai_crons (user_id, gemini_key, interval_min, active)
          VALUES (?,?,?,1)
-         ON DUPLICATE KEY UPDATE
-           gemini_key=VALUES(gemini_key),
-           interval_min=VALUES(interval_min),
-           active=1`,
+         ON DUPLICATE KEY UPDATE gemini_key=VALUES(gemini_key),interval_min=VALUES(interval_min),active=1`,
         [userId, gemini_key, interval]
       );
-
       startUserCron(userId, username, gemini_key, interval);
       res.json({ ok: true, interval_min: interval });
     } catch (e) {
@@ -264,13 +202,10 @@ ${part === story.totalParts ? 'Финальная часть — дай дост
     try {
       const { device_id } = req.body;
       if (!device_id) return err(res, 400, 'Missing device_id');
-
       const users = await query('SELECT id FROM users WHERE device_id = ?', [device_id]);
       if (!users.length) return err(res, 401, 'Not registered');
-      const userId = users[0].id;
-
-      stopUserCron(userId);
-      await query('UPDATE user_ai_crons SET active = 0 WHERE user_id = ?', [userId]);
+      stopUserCron(users[0].id);
+      await query('UPDATE user_ai_crons SET active = 0 WHERE user_id = ?', [users[0].id]);
       res.json({ ok: true });
     } catch (e) {
       err(res, 500, 'DB error');
@@ -282,24 +217,21 @@ ${part === story.totalParts ? 'Финальная часть — дай дост
     try {
       const { device_id } = req.query;
       if (!device_id) return res.json({ active: false });
-
       const users = await query('SELECT id FROM users WHERE device_id = ?', [device_id]);
       if (!users.length) return res.json({ active: false, generated: 0 });
       const userId = users[0].id;
-
       const rows = await query(
         'SELECT active, interval_min, generated, last_title, last_run_at FROM user_ai_crons WHERE user_id = ?',
         [userId]
       );
       if (!rows.length) return res.json({ active: false, generated: 0 });
-
       const r = rows[0];
       res.json({
-        active:       !!r.active && userCrons.has(userId),
+        active: !!r.active && userCrons.has(userId),
         interval_min: r.interval_min,
-        generated:    r.generated,
-        last_title:   r.last_title,
-        last_run_at:  r.last_run_at,
+        generated: r.generated,
+        last_title: r.last_title,
+        last_run_at: r.last_run_at,
       });
     } catch (e) {
       err(res, 500, 'DB error');
