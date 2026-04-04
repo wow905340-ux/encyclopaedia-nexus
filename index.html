@@ -497,6 +497,71 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
 .interest-tag { padding: .25rem .65rem; border-radius: 20px; font-size: .75rem; font-family: var(--mono); cursor: pointer; border: 1px solid var(--border); background: var(--card-bg); transition: all .15s; }
 .interest-tag.selected { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 
+
+/* ═══ GEMINI PANEL ═══ */
+.gemini-panel {
+  position: fixed; inset: 0; z-index: 400;
+  background: rgba(13,13,15,.85); backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center; padding: 1rem;
+}
+.gemini-box {
+  background: var(--ink); color: var(--paper);
+  border: 1px solid var(--gold);
+  border-radius: 10px; width: 100%; max-width: 480px;
+  padding: 1.8rem; box-shadow: 0 0 40px rgba(184,134,11,.2);
+  animation: slideUp .25s ease;
+}
+.gemini-box h3 { font-family: var(--display); font-size: 1.3rem; color: var(--gold-lt); margin-bottom: 1.2rem; }
+.gemini-box input {
+  width: 100%; background: rgba(255,255,255,.08);
+  border: 1px solid rgba(184,134,11,.4); border-radius: var(--r);
+  padding: .6rem .9rem; color: var(--paper);
+  font-family: var(--mono); font-size: .85rem; outline: none; margin-bottom: .8rem;
+}
+.gemini-box input:focus { border-color: var(--gold); }
+.gemini-status {
+  font-family: var(--mono); font-size: .8rem; color: var(--gold-lt);
+  margin-top: .8rem; min-height: 1.2rem; text-align: center;
+}
+.gemini-log {
+  background: rgba(0,0,0,.3); border-radius: 4px;
+  padding: .6rem .8rem; margin-top: .8rem;
+  font-family: var(--mono); font-size: .75rem; color: #aaa;
+  max-height: 120px; overflow-y: auto; display: none;
+}
+.pulse { animation: pulse 1.5s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* ═══ IMPROVED CARDS ═══ */
+.article-card { position: relative; }
+.card-badge {
+  position: absolute; top: .6rem; left: .6rem;
+  background: var(--gold); color: var(--ink);
+  font-family: var(--mono); font-size: .65rem; font-weight: 700;
+  padding: .18rem .5rem; border-radius: 3px; letter-spacing: .05em;
+}
+.card-badge.ai { background: #7c3aed; color: #fff; }
+.card-body { gap: .4rem; }
+.card-title { font-size: 1.08rem; }
+.card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: .4rem; }
+
+/* ═══ HERO SECTION ═══ */
+.hero {
+  background: linear-gradient(135deg, var(--ink) 0%, #1a1208 100%);
+  border: 1px solid var(--border); border-radius: var(--r);
+  padding: 2rem; margin-bottom: 1.5rem; position: relative; overflow: hidden;
+}
+.hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 70% 50%, rgba(184,134,11,.12) 0%, transparent 60%);
+  pointer-events: none;
+}
+.hero-label { font-family: var(--mono); font-size: .7rem; letter-spacing: .18em; color: var(--gold); text-transform: uppercase; margin-bottom: .5rem; }
+.hero-title { font-family: var(--display); font-size: clamp(1.4rem,4vw,2.2rem); font-weight: 900; color: var(--paper); line-height: 1.2; margin-bottom: .6rem; }
+.hero-sub { color: rgba(245,240,232,.6); font-size: .9rem; margin-bottom: 1.2rem; }
+.hero-btn { background: var(--gold); color: var(--ink); border: none; border-radius: var(--r); padding: .6rem 1.4rem; font-family: var(--mono); font-size: .85rem; font-weight: 700; cursor: pointer; transition: background .15s; }
+.hero-btn:hover { background: var(--gold-lt); }
+
 /* ─── SCROLLBAR ─── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--cream); }
@@ -525,6 +590,7 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
             <div class="profile-dropdown-item" onclick="Profile.showInterests()">🏷 Мои интересы</div>
             <div class="profile-dropdown-item" onclick="Profile.requestNotifications()">🔔 Уведомления</div>
             <div class="profile-dropdown-item" style="color:var(--muted);font-size:.75rem;padding:.4rem 1rem" id="notifStatus">Push: выкл</div>
+            <div class="profile-dropdown-item" onclick="Gemini.openPanel()" id="geminiBtn" style="display:none">🤖 Gemini истории</div>
           </div>
         </div>
         <button class="btn btn-primary btn-sm" onclick="Editor.open()">＋ Добавить статью</button>
@@ -585,6 +651,36 @@ mark { background: rgba(184,134,11,.25); color: inherit; border-radius: 2px; pad
     <div style="margin-top:1.2rem;display:flex;gap:.6rem;justify-content:flex-end">
       <button class="btn btn-ghost" onclick="document.getElementById('interestsModal').style.display='none'">Отмена</button>
       <button class="btn btn-primary" onclick="Profile.saveInterests()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- GEMINI MODAL -->
+<div class="gemini-panel" id="geminiPanel" style="display:none">
+  <div class="gemini-box">
+    <h3>🤖 Gemini — Генератор историй</h3>
+    <div class="field" style="margin-bottom:.6rem">
+      <label style="color:rgba(245,240,232,.5);font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:.35rem">Gemini API Key</label>
+      <input type="password" id="geminiKey" placeholder="AIza...">
+    </div>
+    <div class="field" style="margin-bottom:.8rem">
+      <label style="color:rgba(245,240,232,.5);font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:.35rem">Интервал (минут)</label>
+      <input type="number" id="geminiInterval" value="4" min="3" max="60" placeholder="3-60 минут">
+    </div>
+    <div id="geminiServerStatus" style="font-family:var(--mono);font-size:.78rem;color:var(--gold-lt);margin-bottom:.8rem;min-height:1.2rem"></div>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="Gemini.startServer()" style="flex:1">⚡ Запустить на сервере</button>
+      <button class="btn btn-ghost" onclick="Gemini.stopServer()" style="flex:1;border-color:#f87171;color:#f87171">⏹ Остановить</button>
+    </div>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.6rem">
+      <button class="btn btn-ghost" onclick="Gemini.generateOne()" style="flex:1;border-color:var(--gold);color:var(--gold)">✨ Разовая история</button>
+      <button class="btn btn-ghost btn-sm" onclick="Gemini.checkStatus()" style="border-color:rgba(255,255,255,.2)">📊 Статус</button>
+    </div>
+    <div class="gemini-status" id="geminiStatus"></div>
+    <div class="gemini-log" id="geminiLog"></div>
+    <div style="margin-top:1rem;display:flex;justify-content:flex-end">
+      <button class="btn btn-ghost btn-sm" onclick="Gemini.close()" style="border-color:rgba(255,255,255,.2)">Закрыть</button>
     </div>
   </div>
 </div>
@@ -818,7 +914,15 @@ async function loadArticles() {
   if (!data) { ca.innerHTML = '<div class="empty-state"><div class="icon">⚠</div><p>Ошибка загрузки</p></div>'; return; }
 
   const title = State.activeTag ? `# ${State.activeTag}` : 'Все статьи';
-  let html = `
+  const heroHtml = `
+    <div class="hero">
+      <div class="hero-label">✦ Encyclopaedia Nexus</div>
+      <div class="hero-title">Истории. Знания. Открытия.</div>
+      <div class="hero-sub">Читай, создавай и делись — каждый день новые истории от авторов и ИИ</div>
+      <button class="hero-btn" onclick="Editor.open()">＋ Написать статью</button>
+    </div>`;
+
+  let html = heroHtml + `
     <div class="toolbar">
       <div class="toolbar-title">${title}</div>
       <select class="sort-select" onchange="State.sort=this.value;State.page=1;loadArticles()">
@@ -1352,6 +1456,8 @@ async function checkDevMode() {
       const badge = el('div', 'devmode-badge', '⚡ DEV MODE');
       document.body.appendChild(badge);
       console.log('%c⚡ DEV MODE ACTIVE', 'color:#4ade80;font-size:1.2rem;font-weight:bold');
+      const gb = $('geminiBtn');
+      if (gb) gb.style.display = 'flex';
     }
   } catch {}
 }
@@ -1423,6 +1529,100 @@ const Ratings = {
     } catch {}
   }
 };
+
+
+/* ═══════════════════════════════════════════════════════
+   GEMINI STORY GENERATOR (controls server cron)
+═══════════════════════════════════════════════════════ */
+const Gemini = {
+  getKey() { return localStorage.getItem('nexus_gemini_key') || ''; },
+  saveKey(k) { localStorage.setItem('nexus_gemini_key', k); },
+
+  openPanel() {
+    $('profileDropdown').style.display = 'none';
+    const k = this.getKey();
+    if (k) $('geminiKey').value = k;
+    $('geminiPanel').style.display = 'flex';
+    this.checkStatus();
+  },
+  close() { $('geminiPanel').style.display = 'none'; },
+
+  log(msg) {
+    const log = $('geminiLog');
+    log.style.display = 'block';
+    log.innerHTML += `<div>${new Date().toLocaleTimeString()} — ${msg}</div>`;
+    log.scrollTop = log.scrollHeight;
+  },
+  status(msg, loading = false) {
+    const s = $('geminiStatus');
+    s.innerHTML = loading ? `<span class="pulse">⏳ ${msg}</span>` : msg;
+  },
+
+  async startServer() {
+    const key = $('geminiKey').value.trim() || this.getKey();
+    if (!key) { toast('Введи API ключ', true); return; }
+    this.saveKey(key);
+    const interval = parseInt($('geminiInterval').value) || 4;
+    this.status('Запускаю серверный крон…', true);
+    try {
+      const r = await apiFetch('/gemini/key', {
+        method: 'POST',
+        body: JSON.stringify({ key, interval_minutes: interval })
+      });
+      this.status(`✓ Сервер генерирует истории каждые ${r.interval}`);
+      this.log(`Крон запущен, интервал: ${r.interval}`);
+      toast('🤖 Gemini запущен на сервере!');
+    } catch(e) { this.status('❌ ' + e.message); }
+  },
+
+  async stopServer() {
+    try {
+      await apiFetch('/gemini/stop', { method: 'POST', body: '{}' });
+      this.status('⏹ Крон остановлен');
+      this.log('Крон остановлен');
+      toast('Gemini остановлен');
+    } catch(e) { this.status('❌ ' + e.message); }
+  },
+
+  async generateOne() {
+    const key = $('geminiKey').value.trim() || this.getKey();
+    if (!key) { toast('Введи API ключ', true); return; }
+    this.saveKey(key);
+    this.status('Генерирую одну историю…', true);
+    try {
+      // Start with interval 999 hours (effectively once)
+      await apiFetch('/gemini/key', {
+        method: 'POST',
+        body: JSON.stringify({ key, interval_minutes: 999 * 60 })
+      });
+      this.status('✓ История генерируется на сервере…');
+      this.log('Разовая генерация запущена');
+      toast('🤖 История генерируется!');
+      // Reload after 15 sec
+      setTimeout(() => { loadSidebar(); loadArticles(); }, 15000);
+    } catch(e) { this.status('❌ ' + e.message); }
+  },
+
+  async checkStatus() {
+    try {
+      const s = await apiFetch('/gemini/status');
+      const statusEl = $('geminiServerStatus');
+      if (s.running) {
+        statusEl.innerHTML = `🟢 Работает · каждые ${s.interval_min} мин · сгенерировано: ${s.generated}${s.last ? ' · последняя: ' + s.last.slice(0,30) : ''}`;
+      } else {
+        statusEl.innerHTML = '🔴 Остановлен';
+      }
+    } catch {}
+  },
+
+  // Auto-refresh status every 30 sec when panel open
+  startStatusRefresh() {
+    setInterval(() => {
+      if ($('geminiPanel').style.display !== 'none') this.checkStatus();
+    }, 30000);
+  }
+};
+
 
 /* ═══════════════════════════════════════════════════════
    INIT
