@@ -191,7 +191,7 @@ app.get('/api/articles', async (req, res) => {
       params.push(tag);
     }
 
-    sql += ` GROUP BY a.id ORDER BY ${orderCol} DESC LIMIT ? OFFSET ?`;
+    sql += ` GROUP BY a.id, a.slug, a.title, a.summary, a.cover_url, a.author, a.views, a.created_at ORDER BY ${orderCol} DESC LIMIT ? OFFSET ?`;
     params.push(limit, offset);
 
     const rows = await query(sql, params);
@@ -210,13 +210,16 @@ app.get('/api/articles', async (req, res) => {
 app.get('/api/articles/:slug', async (req, res) => {
   try {
     const [article] = await query(
-      `SELECT a.*, GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ',') AS tags,
+      `SELECT a.id, a.slug, a.title, a.summary, a.cover_url, a.author,
+              a.status, a.views, a.created_at, a.updated_at,
+              GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ',') AS tags,
               GROUP_CONCAT(t.color ORDER BY t.name SEPARATOR ',') AS tag_colors
        FROM articles a
        LEFT JOIN article_tags at2 ON at2.article_id = a.id
        LEFT JOIN tags t ON t.id = at2.tag_id
        WHERE a.slug = ?
-       GROUP BY a.id`,
+       GROUP BY a.id, a.slug, a.title, a.summary, a.cover_url, a.author,
+                a.status, a.views, a.created_at, a.updated_at`,
       [req.params.slug]
     );
     if (!article) return err(res, 404, 'Not found');
