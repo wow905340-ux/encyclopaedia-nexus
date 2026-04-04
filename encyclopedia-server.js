@@ -1,61 +1,7 @@
 /**
  * ENCYCLOPAEDIA NEXUS — Backend Server
  * Node.js + Express + MariaDB
- * 
- * Setup:
- *   npm install express mariadb multer sharp cors helmet express-rate-limit
- * 
- * MariaDB schema — run once:
- *   CREATE DATABASE encyclopaedia CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
- *   USE encyclopaedia;
- * 
- *   CREATE TABLE articles (
- *     id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
- *     slug         VARCHAR(220) NOT NULL UNIQUE,
- *     title        VARCHAR(300) NOT NULL,
- *     summary      TEXT,
- *     cover_url    VARCHAR(500),
- *     author       VARCHAR(150) DEFAULT 'Anonymous',
- *     status       ENUM('draft','published','archived') DEFAULT 'draft',
- *     views        INT UNSIGNED DEFAULT 0,
- *     created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
- *     updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
- *     FULLTEXT idx_ft (title, summary)
- *   ) ENGINE=InnoDB;
- * 
- *   CREATE TABLE chunks (
- *     id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
- *     article_id   INT UNSIGNED NOT NULL,
- *     position     SMALLINT UNSIGNED NOT NULL,
- *     type         ENUM('text','heading','image','code','quote','table','divider') DEFAULT 'text',
- *     content      MEDIUMTEXT,
- *     meta         JSON,
- *     FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE,
- *     INDEX idx_article_pos (article_id, position)
- *   ) ENGINE=InnoDB;
- * 
- *   CREATE TABLE tags (
- *     id    SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
- *     name  VARCHAR(80) NOT NULL UNIQUE,
- *     color VARCHAR(7) DEFAULT '#6366f1'
- *   ) ENGINE=InnoDB;
- * 
- *   CREATE TABLE article_tags (
- *     article_id INT UNSIGNED NOT NULL,
- *     tag_id     SMALLINT UNSIGNED NOT NULL,
- *     PRIMARY KEY (article_id, tag_id),
- *     FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE,
- *     FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
- *   ) ENGINE=InnoDB;
- * 
- *   CREATE TABLE media (
- *     id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
- *     filename   VARCHAR(260) NOT NULL,
- *     mime       VARCHAR(80),
- *     size_bytes INT UNSIGNED,
- *     url        VARCHAR(500),
- *     uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP
- *   ) ENGINE=InnoDB;
+ * v2.0 — с фиксами багов и IP-based dev mode
  */
 
 'use strict';
@@ -74,6 +20,8 @@ const bcrypt     = require('bcryptjs');
 // ─── CONFIG ────────────────────────────────────────────────────────────────
 const CONFIG = {
   port: process.env.PORT || 8080,
+  // ★ Дев IP — только с этого адреса разрешены admin-роуты
+  devIPs: (process.env.DEV_IPS || '5.34.113.82').split(',').map(s => s.trim()),
   db: {
     host:            process.env.MYSQLPRIVATEHOST || process.env.MYSQLHOST || '127.0.0.1',
     port:            parseInt(process.env.MYSQLPORT || '3306'),
@@ -82,7 +30,6 @@ const CONFIG = {
     database:        process.env.MYSQLDATABASE || 'railway',
     connectionLimit: 5,
     connectTimeout:  60000,
-    // charset handled by collation in DB
   },
   upload: {
     dir:      path.resolve('./uploads'),
@@ -90,8 +37,8 @@ const CONFIG = {
     allowed:  ['image/jpeg','image/png','image/webp','image/gif','image/avif'],
   },
   chunk: {
-    maxPerArticle: 500,   // hard cap per article
-    pageSize: 20,         // chunks per lazy-load page
+    maxPerArticle: 500,
+    pageSize: 20,
   },
   search: {
     minLength: 2,
@@ -141,6 +88,39 @@ const limiter = rateLimit({ windowMs: 60_000, max: 120, standardHeaders: true, l
 app.use('/api', limiter);
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────
+
+/**
+ * Получить реальный IP клиента.
+ * На Railway запросы идут через прокси, поэтому берём x-forwarded-for.
+ */
+function getClientIP(req) {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    // x-forwarded-for может содержать цепочку: "client, proxy1, proxy2"
+    return forwarded.split(',')[0].trim();
+  }
+  return req.socket?.remoteAddress || 'unknown';
+}
+
+/**
+ * Проверить, является ли IP дев-адресом.
+ */
+function isDevIP(req) {
+  const ip = getClientIP(req);
+  return CONFIG.devIPs.includes(ip);
+}
+
+/**
+ * Middleware: разрешить только дев IP.
+ * Если не дев — 403.
+ */
+function requireDev(req, res, next) {
+  if (!isDevIP(req)) {
+    return res.status(403).json({ error: 'Forbidden: dev only' });
+  }
+  next();
+}
+
 function slugify(str) {
   return str.toLowerCase()
     .replace(/[^\w\s-]/g, '')
@@ -158,6 +138,14 @@ function paginate(page = 1, limit = 20) {
 function err(res, status, msg) {
   return res.status(status).json({ error: msg });
 }
+
+// ─── DEV CHECK ENDPOINT ────────────────────────────────────────────────────
+// Фронт вызывает этот роут чтобы узнать, является ли текущий IP дев-адресом.
+// Никаких внешних ipify не нужно — сервер сам знает IP клиента.
+app.get('/api/dev/check', (req, res) => {
+  const ip = getClientIP(req);
+  res.json({ isDev: isDevIP(req), ip });
+});
 
 // ─── ARTICLES ──────────────────────────────────────────────────────────────
 
@@ -224,8 +212,8 @@ app.get('/api/articles/:slug', async (req, res) => {
     );
     if (!article) return err(res, 404, 'Not found');
 
-    // increment views — track unique per IP (once per hour)
-    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+    // Инкремент просмотров — уникально по IP раз в час
+    const ip = getClientIP(req);
     (async () => {
       try {
         const recent = await query(
@@ -236,11 +224,14 @@ app.get('/api/articles/:slug', async (req, res) => {
           await pool.query('INSERT INTO article_views (article_id, ip) VALUES (?,?)', [article.id, ip]);
           await pool.query('UPDATE articles SET views = views + 1 WHERE id = ?', [article.id]);
         }
-      } catch {}
+      } catch (e) {
+        console.error('Views tracking error:', e.message);
+      }
     })();
 
     res.json(article);
   } catch (e) {
+    console.error(e);
     err(res, 500, 'DB error');
   }
 });
@@ -251,10 +242,13 @@ app.post('/api/articles', async (req, res) => {
     const { title, summary, author, cover_url, tags = [], chunks = [] } = req.body;
     if (!title?.trim()) return err(res, 400, 'Title required');
 
+    // ★ FIX: правильная проверка уникальности slug — точное совпадение, не LIKE
     let slug = slugify(title);
-    // make slug unique
-    const existing = await query('SELECT id FROM articles WHERE slug LIKE ?', [`${slug}%`]);
-    if (existing.length) slug += `-${Date.now()}`;
+    const exactMatch = await query('SELECT id FROM articles WHERE slug = ?', [slug]);
+    if (exactMatch.length) {
+      // Добавляем случайный суффикс только если slug реально занят
+      slug += '-' + crypto.randomBytes(3).toString('hex');
+    }
 
     const insertResult = await pool.query(
       `INSERT INTO articles (slug, title, summary, author, cover_url, status)
@@ -277,7 +271,7 @@ app.post('/api/articles', async (req, res) => {
       }
     }
 
-    // insert chunks (smart chunking: cap at maxPerArticle)
+    // insert chunks
     if (chunks.length) {
       const limited = chunks.slice(0, CONFIG.chunk.maxPerArticle);
       for (let i = 0; i < limited.length; i++) {
@@ -297,11 +291,20 @@ app.post('/api/articles', async (req, res) => {
   }
 });
 
-// PUT /api/articles/:id — update meta
+// PUT /api/articles/:id — update meta (только дев или свой автор)
 app.put('/api/articles/:id', async (req, res) => {
   try {
     const { title, summary, author, cover_url, status, tags } = req.body;
     const id = parseInt(req.params.id);
+
+    // ★ Проверяем права: либо дев IP, либо передали device_id автора
+    if (!isDevIP(req)) {
+      // Для обычных юзеров можно добавить проверку device_id позже
+      // Пока просто блокируем смену статуса на archived/draft от анонимов
+      if (status && status !== 'published') {
+        return err(res, 403, 'Only dev can change article status');
+      }
+    }
 
     const fields = [];
     const vals   = [];
@@ -333,12 +336,13 @@ app.put('/api/articles/:id', async (req, res) => {
 
     res.json({ ok: true });
   } catch (e) {
+    console.error(e);
     err(res, 500, 'DB error');
   }
 });
 
-// DELETE /api/articles/:id
-app.delete('/api/articles/:id', async (req, res) => {
+// ★ DELETE /api/articles/:id — только дев
+app.delete('/api/articles/:id', requireDev, async (req, res) => {
   try {
     await query('DELETE FROM articles WHERE id = ?', [parseInt(req.params.id)]);
     res.json({ ok: true });
@@ -349,7 +353,7 @@ app.delete('/api/articles/:id', async (req, res) => {
 
 // ─── CHUNKS ────────────────────────────────────────────────────────────────
 
-// GET /api/articles/:id/chunks?page=1 — paginated lazy-load of chunks
+// GET /api/articles/:id/chunks?page=1
 app.get('/api/articles/:id/chunks', async (req, res) => {
   try {
     const articleId = parseInt(req.params.id);
@@ -376,7 +380,6 @@ app.post('/api/articles/:id/chunks', async (req, res) => {
     const articleId = parseInt(req.params.id);
     const { chunks = [] } = req.body;
 
-    // current count
     const cntRows = await query('SELECT COUNT(*) AS cnt FROM chunks WHERE article_id = ?', [articleId]);
     const current = Number(cntRows[0].cnt);
     const space   = CONFIG.chunk.maxPerArticle - current;
@@ -396,8 +399,8 @@ app.post('/api/articles/:id/chunks', async (req, res) => {
   }
 });
 
-// PUT /api/chunks/:id — update single chunk
-app.put('/api/chunks/:id', async (req, res) => {
+// ★ PUT /api/chunks/:id — только дев
+app.put('/api/chunks/:id', requireDev, async (req, res) => {
   try {
     const { type, content, meta } = req.body;
     await query(
@@ -410,8 +413,8 @@ app.put('/api/chunks/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/chunks/:id
-app.delete('/api/chunks/:id', async (req, res) => {
+// ★ DELETE /api/chunks/:id — только дев
+app.delete('/api/chunks/:id', requireDev, async (req, res) => {
   try {
     await query('DELETE FROM chunks WHERE id = ?', [parseInt(req.params.id)]);
     res.json({ ok: true });
@@ -422,7 +425,6 @@ app.delete('/api/chunks/:id', async (req, res) => {
 
 // ─── SEARCH ────────────────────────────────────────────────────────────────
 
-// GET /api/search?q=...&tag=...
 app.get('/api/search', async (req, res) => {
   try {
     const q = String(req.query.q || '').trim();
@@ -431,7 +433,6 @@ app.get('/api/search', async (req, res) => {
     const tag    = req.query.tag || null;
     const { limit, offset } = paginate(req.query.page, Math.min(20, CONFIG.search.maxResults));
 
-    // Full-text search on title+summary, fallback LIKE
     let sql = `
       SELECT a.id, a.slug, a.title, a.summary, a.cover_url, a.author, a.views, a.created_at,
              MATCH(a.title, a.summary) AGAINST(? IN BOOLEAN MODE) AS score,
@@ -481,7 +482,8 @@ app.get('/api/tags', async (_, res) => {
   }
 });
 
-app.put('/api/tags/:id', async (req, res) => {
+// ★ PUT /api/tags/:id — только дев
+app.put('/api/tags/:id', requireDev, async (req, res) => {
   try {
     const { color } = req.body;
     await query('UPDATE tags SET color = ? WHERE id = ?', [color, parseInt(req.params.id)]);
@@ -537,11 +539,8 @@ app.get('/api/health', async (_, res) => {
   }
 });
 
-
-
 // ─── AUTH ──────────────────────────────────────────────────────────────────
 
-// POST /api/auth/register
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, password, device_id } = req.body;
@@ -549,11 +548,9 @@ app.post('/api/auth/register', async (req, res) => {
     if (username.length < 2 || username.length > 30) return err(res, 400, 'Username 2-30 chars');
     if (password.length < 4) return err(res, 400, 'Password min 4 chars');
 
-    // Check device already registered
     const existing = await query('SELECT id, username FROM users WHERE device_id = ?', [device_id]);
     if (existing.length) return err(res, 409, 'Device already registered as: ' + existing[0].username);
 
-    // Check username taken
     const taken = await query('SELECT id FROM users WHERE username = ?', [username.trim()]);
     if (taken.length) return err(res, 409, 'Username taken');
 
@@ -570,7 +567,6 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// POST /api/auth/login
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password, device_id } = req.body;
@@ -583,7 +579,6 @@ app.post('/api/auth/login', async (req, res) => {
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) return err(res, 401, 'Wrong username or password');
 
-    // Lock to device
     if (user.device_id !== device_id) return err(res, 403, 'This account is locked to another device');
 
     res.json({ id: user.id, username: user.username, avatar_color: user.avatar_color, interests: user.interests });
@@ -592,7 +587,6 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// GET /api/auth/device/:deviceId — check if device is registered
 app.get('/api/auth/device/:deviceId', async (req, res) => {
   try {
     const rows = await query('SELECT id, username, avatar_color, interests FROM users WHERE device_id = ?', [req.params.deviceId]);
@@ -603,7 +597,6 @@ app.get('/api/auth/device/:deviceId', async (req, res) => {
   }
 });
 
-// PUT /api/auth/interests — save user interests
 app.put('/api/auth/interests', async (req, res) => {
   try {
     const { device_id, interests } = req.body;
@@ -614,7 +607,6 @@ app.put('/api/auth/interests', async (req, res) => {
   }
 });
 
-// POST /api/push/subscribe — save push subscription
 app.post('/api/push/subscribe', async (req, res) => {
   try {
     const { device_id, endpoint, p256dh, auth } = req.body;
@@ -633,7 +625,6 @@ app.post('/api/push/subscribe', async (req, res) => {
 
 // ─── RATINGS ───────────────────────────────────────────────────────────────
 
-// POST /api/ratings/bulk — MUST be before /:articleId to avoid route conflict
 app.post('/api/ratings/bulk', async (req, res) => {
   try {
     const { ids } = req.body;
@@ -653,7 +644,6 @@ app.post('/api/ratings/bulk', async (req, res) => {
   }
 });
 
-// GET /api/ratings/:articleId — get rating for article
 app.get('/api/ratings/:articleId', async (req, res) => {
   try {
     const articleId = parseInt(req.params.articleId);
@@ -669,13 +659,12 @@ app.get('/api/ratings/:articleId', async (req, res) => {
   }
 });
 
-// POST /api/ratings/:articleId — rate article (1 vote per IP)
 app.post('/api/ratings/:articleId', async (req, res) => {
   try {
     const articleId = parseInt(req.params.articleId);
     const stars = parseInt(req.body.stars);
     if (!stars || stars < 1 || stars > 5) return err(res, 400, 'Stars must be 1-5');
-    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+    const ip = getClientIP(req);
     await pool.query(
       'INSERT INTO ratings (article_id, ip, stars) VALUES (?,?,?) ON DUPLICATE KEY UPDATE stars=VALUES(stars)',
       [articleId, ip, stars]
@@ -690,13 +679,10 @@ app.post('/api/ratings/:articleId', async (req, res) => {
   }
 });
 
+// ─── GEMINI STORY GENERATOR ────────────────────────────────────────────────
 
-
-// ─── GEMINI STORY GENERATOR (SERVER-SIDE CRON) ─────────────────────────────
-
-// POST /api/gemini/key — save Gemini key (only from dev IP)
-app.post('/api/gemini/key', async (req, res) => {
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || '';
+// ★ POST /api/gemini/key — ТОЛЬКО ДЕВ IP
+app.post('/api/gemini/key', requireDev, async (req, res) => {
   const { key, interval_minutes } = req.body;
   if (!key) return err(res, 400, 'No key');
   GeminiCron.apiKey = key;
@@ -705,13 +691,13 @@ app.post('/api/gemini/key', async (req, res) => {
   res.json({ ok: true, interval: GeminiCron.intervalMs / 60000 + ' min' });
 });
 
-// POST /api/gemini/stop — stop cron
-app.post('/api/gemini/stop', (req, res) => {
+// ★ POST /api/gemini/stop — ТОЛЬКО ДЕВ IP
+app.post('/api/gemini/stop', requireDev, (req, res) => {
   GeminiCron.stop();
   res.json({ ok: true });
 });
 
-// GET /api/gemini/status
+// GET /api/gemini/status — публичный (только статус, без ключа)
 app.get('/api/gemini/status', (req, res) => {
   res.json({
     running: !!GeminiCron.timer,
@@ -737,14 +723,14 @@ const GENRES = [
 const GeminiCron = {
   timer: null,
   apiKey: '',
-  intervalMs: 4 * 60 * 1000, // 4 min default
+  intervalMs: 4 * 60 * 1000,
   count: 0,
   lastTitle: '',
 
   start() {
     if (this.timer) clearInterval(this.timer);
     console.log('🤖 Gemini Cron started, interval:', this.intervalMs / 60000, 'min');
-    this.generate(); // immediately first
+    this.generate();
     this.timer = setInterval(() => this.generate(), this.intervalMs);
   },
 
@@ -804,12 +790,11 @@ const GeminiCron = {
       const clean = raw.replace(/```json|```/g, '').trim();
       const story = JSON.parse(clean);
 
-      await this.publishStory(story, 1);
+      await this.publishStory(story);
       this.count++;
       this.lastTitle = story.title;
       console.log('🤖 Published:', story.title);
 
-      // Auto-generate continuations
       if (story.hasContinuation && story.totalParts > 1) {
         for (let part = 2; part <= Math.min(story.totalParts, 3); part++) {
           await new Promise(r => setTimeout(r, 5000));
@@ -852,29 +837,26 @@ ${part === total ? 'Финальная часть — дай достойную 
       const data = await res.json();
       const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
       const story = JSON.parse(raw.replace(/```json|```/g, '').trim());
-      await this.publishStory(story, part);
+      await this.publishStory(story);
       console.log(`🤖 Part ${part} published`);
     } catch (e) {
       console.error(`🤖 Part ${part} error:`, e.message);
     }
   },
 
-  async publishStory(story, part) {
-    // slugify title
+  async publishStory(story) {
     const slug_base = story.title.toLowerCase()
-      .replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').slice(0, 180) + '-' + Date.now();
+      .replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').slice(0, 180) + '-' + crypto.randomBytes(3).toString('hex');
 
     const paragraphs = story.content.split(/\n\n+/).filter(p => p.trim());
     const chunks = paragraphs.map(p => ({ type: 'text', content: p.trim() }));
 
-    // Use internal query directly
     const insertResult = await pool.query(
       `INSERT INTO articles (slug, title, summary, author, status) VALUES (?,?,?,?,'published')`,
       [slug_base, story.title, story.summary || '', '🤖 Gemini AI']
     );
     const articleId = Number(insertResult[0].insertId);
 
-    // Insert tags
     const tags = [...(story.tags || []), 'AI-история'];
     for (const tagName of tags.slice(0, 10)) {
       const name = String(tagName).slice(0, 80).trim();
@@ -887,7 +869,6 @@ ${part === total ? 'Финальная часть — дай достойную 
       await query('INSERT IGNORE INTO article_tags VALUES (?,?)', [articleId, tag.id]);
     }
 
-    // Insert chunks
     for (let i = 0; i < chunks.length; i++) {
       await query(
         'INSERT INTO chunks (article_id, position, type, content, meta) VALUES (?,?,?,?,?)',
@@ -898,19 +879,13 @@ ${part === total ? 'Финальная часть — дай достойную 
 };
 
 // ─── SERVE FRONTEND ────────────────────────────────────────────────────────
-// Railway не умеет отдавать статику сам — сервер делает это вместо него.
-
 app.use(express.static(__dirname));
 
-// SPA fallback — все маршруты кроме /api отдают index.html
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // ─── AUTO MIGRATE ──────────────────────────────────────────────────────────
-// При старте сервера автоматически создаёт все таблицы если их нет.
-// Руками в БД лезть не нужно.
-
 async function migrate() {
   console.log('⚙️  Running migrations…');
   await query(`
@@ -928,10 +903,9 @@ async function migrate() {
     ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
   `);
 
-  // FULLTEXT добавляем отдельно — IF NOT EXISTS для индекса не поддерживается
   try {
     await query(`ALTER TABLE articles ADD FULLTEXT idx_ft (title, summary)`);
-  } catch (e) { /* уже существует — ок */ }
+  } catch (e) { /* already exists */ }
 
   await query(`
     CREATE TABLE IF NOT EXISTS chunks (
@@ -1011,6 +985,7 @@ async function migrate() {
     ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
   `);
 
+  // ★ article_views — теперь есть и в migrate (раньше была только в шапке)
   await query(`
     CREATE TABLE IF NOT EXISTS article_views (
       id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -1027,12 +1002,9 @@ async function migrate() {
 }
 
 // ─── START ─────────────────────────────────────────────────────────────────
-
-// Сервер стартует СРАЗУ — не ждёт базу
-// Если база недоступна при старте — сайт всё равно поднимется
 app.listen(CONFIG.port, '0.0.0.0', () => {
-  console.log(`📚 Encyclopaedia NEXUS running on port ${CONFIG.port}`);
-  // Миграции запускаем в фоне после старта
+  console.log(`📚 Encyclopaedia NEXUS v2.0 running on port ${CONFIG.port}`);
+  console.log(`⚡ Dev IPs: ${CONFIG.devIPs.join(', ')}`);
   migrate()
     .then(() => console.log('✅ DB ready'))
     .catch(e => console.error('⚠️ DB not ready yet:', e.message));
